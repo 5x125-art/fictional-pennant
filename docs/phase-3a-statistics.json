@@ -1,0 +1,14 @@
+{
+  "worldSeed": 786421,
+  "matchSeeds": "0..255",
+  "games": 256,
+  "teamGames": 512,
+  "runsPerTeam": 3.298828125,
+  "battingAverage": 0.24844249417628259,
+  "homeRunsPerTeam": 1.109375,
+  "walkRate": 0.08578864663131015,
+  "strikeoutRate": 0.20506776664702417,
+  "pitchesPerTeam": 161.60546875,
+  "draws": 7,
+  "extraInningGames": 28
+}
