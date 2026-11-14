@@ -209,7 +209,17 @@ export function App() {
               {state.saves.length ? (
                 <ul>
                   {state.saves.map((save, index) => (
-                    <li key={save.id}>
+                    <li
+                      key={save.id}
+                      className={
+                        save.id === state.activeId ? "active-slot" : undefined
+                      }
+                      style={
+                        {
+                          "--team-color": getTeam(save.teamId).color,
+                        } as CSSProperties
+                      }
+                    >
                       <div>
                         <span className="slot-number">
                           SLOT {String(index + 1).padStart(2, "0")}
@@ -283,7 +293,26 @@ export function App() {
             onClick={() => setTab(item)}
           >
             <span className="nav-mark" aria-hidden="true">
-              {["⌂", "♧", "▦", "▤", "⚙"][index]}
+              <svg
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.8"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <path
+                  d={
+                    [
+                      "M3 10 12 3l9 7M5 9v12h14V9M9 21v-8h6v8",
+                      "M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2M16 4a4 4 0 0 1 0 8M22 21v-2a4 4 0 0 0-3-3.87M13 7a4 4 0 1 1-8 0 4 4 0 0 1 8 0",
+                      "M4 5h16v16H4zM4 10h16M8 3v4M16 3v4M8 14h2M14 14h2M8 18h2",
+                      "M4 3v18h17M8 16v-5M13 16V7M18 16v-8",
+                      "M3 21h18M5 21V5h14v16M9 9h1M14 9h1M9 13h1M14 13h1M10 21v-4h4v4",
+                    ][index]
+                  }
+                />
+              </svg>
             </span>
             {item}
           </button>

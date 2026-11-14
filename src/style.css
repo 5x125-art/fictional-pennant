@@ -1,7 +1,14 @@
 :root {
+  --navy: #0f2747;
+  --sub-navy: #163a63;
+  --red: #d7263d;
+  --background: #f7f7f2;
+  --gray: #e5e7eb;
+  --text: #122033;
+  --muted: #48586d;
   font-family: "Hiragino Kaku Gothic ProN", "Yu Gothic", Meiryo, sans-serif;
-  color: #253c37;
-  background: #f4f5ef;
+  color: var(--text);
+  background: var(--background);
   font-synthesis: none;
   font-weight: 400;
   line-height: 1.65;
@@ -18,24 +25,27 @@ input {
 }
 button {
   cursor: pointer;
-  border: 1px solid #cbd6ce;
+  border: 1px solid var(--navy);
   border-radius: 7px;
   padding: 10px 16px;
   min-height: 44px;
   background: white;
-  color: #23463a;
+  color: var(--navy);
   font-weight: 700;
 }
 button:hover:not(:disabled) {
-  background: #eaf0e8;
+  background: #edf2f8;
 }
 button:disabled {
   cursor: default;
-  opacity: 0.55;
+  opacity: 1;
+  background: var(--gray);
+  color: #556173;
+  border-color: #aab7c7;
 }
 button:focus-visible,
 input:focus-visible {
-  outline: 3px solid #bf8c2d;
+  outline: 3px solid var(--red);
   outline-offset: 4px;
 }
 h1,
@@ -50,13 +60,14 @@ h1 {
   margin: 5px 0;
 }
 h2 {
+  font-weight: 800;
   font-size: 19px;
 }
 h3 {
   font-size: 15px;
 }
 .masthead {
-  border-bottom: 1px solid #d9e0d7;
+  border-bottom: 4px solid var(--navy);
   padding: 22px max(20px, calc((100vw - 960px) / 2));
   display: flex;
   justify-content: space-between;
@@ -64,6 +75,7 @@ h3 {
   background: #fff;
 }
 .masthead p {
+  color: var(--navy);
   font-size: 21px;
   font-weight: 800;
   letter-spacing: 0.06em;
@@ -72,22 +84,22 @@ h3 {
   font-size: 10px;
   font-weight: 800;
   letter-spacing: 0.18em;
-  color: #637b6d;
+  color: var(--sub-navy);
 }
 .edition {
   font-size: 11px;
   font-weight: 400;
   letter-spacing: 0;
   margin-left: 15px;
-  color: #68786c;
+  color: var(--muted);
 }
 .phase {
-  border: 1px solid #d9dfd2;
+  border: 1px solid var(--navy);
   border-radius: 4px;
   padding: 4px 9px;
   font-size: 10px;
   letter-spacing: 0.1em;
-  color: #66755f;
+  color: var(--navy);
   white-space: nowrap;
 }
 main {
@@ -98,34 +110,38 @@ main {
 .page-heading > p,
 .section-heading p {
   font-size: 13px;
-  color: #6d7a70;
+  color: var(--muted);
 }
 .status {
   font-size: 13px;
   min-height: 26px;
-  color: #326952;
+  color: var(--sub-navy);
   margin: 5px 0;
 }
 .selection,
 .saves {
   background: #fff;
-  border: 1px solid #dce2d7;
+  border: 1px solid #aab7c7;
   border-radius: 12px;
   padding: 24px;
   margin-bottom: 22px;
 }
 .section-heading {
+  border-bottom: 2px solid var(--navy);
+  padding-bottom: 14px;
   display: flex;
   gap: 13px;
   align-items: center;
   margin-bottom: 17px;
 }
 .step {
+  background: var(--navy);
+  font-variant-numeric: tabular-nums;
   font-size: 14px;
   font-weight: 800;
-  color: #7c8876;
-  border: 1px solid #dce2d7;
-  border-radius: 50%;
+  color: #ffffff;
+  border: 1px solid #aab7c7;
+  border-radius: 4px;
   width: 36px;
   height: 36px;
   display: grid;
@@ -134,7 +150,7 @@ main {
 }
 .hint {
   font-size: 12px;
-  color: #6e786d;
+  color: var(--muted);
   margin: 15px 0 0;
 }
 .selection > .hint {
@@ -152,19 +168,21 @@ fieldset {
   gap: 24px;
 }
 .league h3 {
-  border-top: 3px solid #47799e;
+  color: #2363b0;
+  border-top: 3px solid #2363b0;
   padding: 10px 0;
   display: flex;
   justify-content: space-between;
   align-items: center;
 }
 .league.red h3 {
-  border-color: #ae555b;
+  color: var(--red);
+  border-color: var(--red);
 }
 .league h3 > span {
   font-weight: 400;
   font-size: 11px;
-  color: #758175;
+  color: var(--muted);
 }
 .team-list {
   display: grid;
@@ -175,7 +193,7 @@ fieldset {
   display: flex;
   align-items: center;
   gap: 10px;
-  border: 1px solid #dce2da;
+  border: 1px solid #aab7c7;
   border-radius: 7px;
   padding: 13px 10px;
   cursor: pointer;
@@ -184,12 +202,12 @@ fieldset {
   background: #fff;
 }
 .team-option.selected {
-  border-color: #316c52;
-  background: #edf4ed;
-  box-shadow: 0 0 0 1px #316c52;
+  border-color: var(--navy);
+  background: #edf2f8;
+  box-shadow: 0 0 0 1px var(--navy);
 }
 .team-option input {
-  accent-color: #2c634c;
+  accent-color: var(--navy);
   width: 17px;
   height: 17px;
   flex-shrink: 0;
@@ -203,7 +221,7 @@ fieldset {
 }
 .selection-actions {
   margin-top: 24px;
-  border-top: 1px solid #e7eae2;
+  border-top: 1px solid var(--gray);
   padding-top: 20px;
   display: flex;
   align-items: center;
@@ -216,12 +234,12 @@ fieldset {
   min-width: 190px;
 }
 .primary {
-  background: #204f3c;
+  background: var(--navy);
   color: #fff;
-  border-color: #204f3c;
+  border-color: var(--navy);
 }
 .primary:hover:not(:disabled) {
-  background: #143d2c;
+  background: var(--sub-navy);
 }
 .saves ul {
   list-style: none;
@@ -234,30 +252,32 @@ fieldset {
   align-items: center;
   gap: 12px;
   padding: 16px 0;
-  border-bottom: 1px solid #e5e9e0;
+  border-bottom: 1px solid #aab7c7;
 }
 .saves li p {
   font-size: 11px;
-  color: #697769;
+  color: var(--muted);
 }
 .slot-number {
+  font-variant-numeric: tabular-nums;
   font-size: 10px;
   letter-spacing: 0.12em;
-  color: #7b856d;
+  color: var(--sub-navy);
   font-weight: 700;
 }
 .empty {
   font-size: 13px;
   padding: 20px 0;
-  color: #74816f;
+  color: var(--muted);
 }
 .new-slot {
   width: 100%;
   margin-top: 18px;
-  background: #f7f9f3;
+  background: #ffffff;
 }
 .club-panel {
-  background: #153d36;
+  box-shadow: 0 4px 0 var(--sub-navy);
+  background: var(--navy);
   color: #fff;
   border-radius: 12px;
   padding: 27px;
@@ -265,7 +285,7 @@ fieldset {
   border-left: 7px solid var(--team-color);
 }
 .club-panel .eyebrow {
-  color: #b4c8ad;
+  color: #d6e5fa;
 }
 .club-panel h2 {
   font-size: 28px;
@@ -273,13 +293,13 @@ fieldset {
 }
 .club-panel > p {
   font-size: 12px;
-  color: #d2dfd5;
+  color: #e5e7eb;
 }
 .club-panel .league-label {
   margin-top: 15px;
 }
 .club-footer {
-  border-top: 1px solid #46645b;
+  border-top: 1px solid #718aa8;
   padding-top: 18px;
   margin-top: 22px;
   display: flex;
@@ -298,16 +318,16 @@ fieldset {
 }
 .coming p {
   font-size: 12px;
-  color: #73806f;
+  color: var(--muted);
   margin-top: 4px;
 }
 .badge {
   display: inline-block;
-  background: #e9eddf;
-  border: 1px solid #d7ddc9;
+  background: #edf2f8;
+  border: 1px solid #aab7c7;
   border-radius: 4px;
   padding: 3px 9px;
-  color: #626d49;
+  color: var(--sub-navy);
   font-size: 11px;
   white-space: nowrap;
 }
@@ -318,8 +338,8 @@ fieldset {
   right: 0;
   display: flex;
   justify-content: center;
-  background: #fffffff5;
-  border-top: 1px solid #d8e0d5;
+  background: #ffffff;
+  border-top: 1px solid var(--navy);
   padding: 8px 8px calc(8px + env(safe-area-inset-bottom));
   z-index: 5;
 }
@@ -340,13 +360,14 @@ fieldset {
   line-height: 1.3;
 }
 .bottom-nav button[aria-current] {
-  color: #1a5b3b;
-  background: #edf3e8;
+  box-shadow: inset 0 3px 0 var(--red);
+  color: #ffffff;
+  background: var(--navy);
 }
 .placeholder {
   text-align: center;
   background: white;
-  border: 1px solid #dce2d7;
+  border: 1px solid #aab7c7;
   border-radius: 12px;
   padding: 65px 20px;
 }
@@ -356,12 +377,12 @@ fieldset {
 }
 .placeholder p {
   font-size: 14px;
-  color: #6b796b;
+  color: var(--muted);
   margin: 22px 0;
 }
 .error {
-  background: #fff0ed;
-  border: 1px solid #d99a86;
+  background: #fff1f3;
+  border: 1px solid var(--red);
   border-radius: 7px;
   padding: 16px;
   font-size: 13px;
@@ -385,6 +406,7 @@ fieldset {
     display: none;
   }
   .masthead p {
+    color: var(--navy);
     font-size: 19px;
   }
   main {
@@ -436,4 +458,65 @@ fieldset {
       background 0.15s,
       border-color 0.15s;
   }
+}
+
+/* 球団色は球団の識別、青・赤はリーグの識別に使用する。 */
+.saves li {
+  border-left: 4px solid var(--team-color);
+  padding-left: 12px;
+  padding-right: 12px;
+  margin-bottom: 8px;
+}
+.saves li.active-slot {
+  background: #edf2f8;
+  box-shadow: inset 0 0 0 1px #aab7c7;
+}
+.saves li.active-slot button:disabled {
+  background: var(--navy);
+  color: #ffffff;
+  border-color: var(--navy);
+}
+.team-option:hover {
+  background: #f0f4fa;
+}
+.team-option.selected {
+  font-weight: 700;
+}
+.primary:disabled {
+  background: var(--gray);
+  color: #556173;
+  border-color: #aab7c7;
+}
+.club-panel .club-footer button {
+  border-color: #ffffff;
+}
+.bottom-nav button:hover:not(:disabled):not([aria-current]) {
+  background: #edf2f8;
+}
+.bottom-nav button[aria-current]:hover {
+  background: var(--sub-navy);
+}
+h1 {
+  color: var(--navy);
+  font-weight: 900;
+}
+.phase {
+  background: var(--navy);
+  color: #ffffff;
+  font-weight: 800;
+}
+.saves li > div {
+  min-width: 0;
+}
+.saves li h3 {
+  overflow-wrap: anywhere;
+}
+.saves li button {
+  flex-shrink: 0;
+}
+
+.nav-mark svg {
+  display: block;
+  width: 24px;
+  height: 24px;
 }
