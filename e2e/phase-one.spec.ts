@@ -76,3 +76,23 @@ test("保存が拒否された場合は成功表示せずエラーを表示す�
     page.getByRole("region", { name: "現在の操作球団" }),
   ).toHaveCount(0);
 });
+
+test("randomUUIDが使えない環境でも新規保存・復元できる", async ({ page }) => {
+  await page.addInitScript(() => {
+    Object.defineProperty(window.crypto, "randomUUID", { value: undefined });
+  });
+  await page.goto("/");
+  await page.getByRole("radio", { name: "神戸アンカーズ" }).check();
+  await page.getByRole("button", { name: "この球団で始める" }).click();
+  await expect(
+    page.getByRole("region", { name: "現在の操作球団" }),
+  ).toContainText("神戸アンカーズ");
+  await page.getByRole("button", { name: "手動保存" }).click();
+  await expect(page.getByRole("status")).toHaveText(
+    "現在のスロットに保存しました。",
+  );
+  await page.reload();
+  await expect(
+    page.getByRole("region", { name: "現在の操作球団" }),
+  ).toContainText("神戸アンカーズ");
+});
