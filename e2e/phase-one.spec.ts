@@ -7,7 +7,22 @@ test("球団選択・複数セーブ・手動保存・再読み込み・準備�
   await expect(
     page.getByRole("button", { name: "この球団で始める" }),
   ).toBeDisabled();
+  if (test.info().project.name === "mobile") {
+    const viewport = page.viewportSize()!;
+    await page.setViewportSize({ width: 320, height: 700 });
+    expect(
+      await page.evaluate(
+        () => document.documentElement.scrollWidth <= innerWidth,
+      ),
+    ).toBe(true);
+    await page.setViewportSize(viewport);
+  }
   await page.getByRole("radio", { name: "横浜セイラーズ" }).check();
+  await page.screenshot({
+    path: `test-results/${test.info().project.name}-selection.png`,
+    fullPage: true,
+    scale: "css",
+  });
   await page.getByRole("button", { name: "この球団で始める" }).click();
   await expect(
     page.getByRole("region", { name: "現在の操作球団" }),
@@ -50,9 +65,15 @@ test("球団選択・複数セーブ・手動保存・再読み込み・準備�
   ).toBe(true);
   const nav = await page.getByRole("navigation").boundingBox();
   expect(nav!.y + nav!.height).toBeCloseTo(page.viewportSize()!.height, 0);
+  await page.evaluate(() => window.scrollTo(0, 0));
   await page.screenshot({
     path: `test-results/${test.info().project.name}-home.png`,
     fullPage: true,
+    scale: "css",
+  });
+  await page.screenshot({
+    path: `test-results/${test.info().project.name}-home-viewport.png`,
+    scale: "css",
   });
 });
 test("保存が拒否された場合は成功表示せずエラーを表示する", async ({ page }) => {
