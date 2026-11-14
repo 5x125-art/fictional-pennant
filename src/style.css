@@ -2,7 +2,9 @@
   --navy: #0f2747;
   --sub-navy: #163a63;
   --red: #d7263d;
-  --background: #f7f7f2;
+  --background: #17283d;
+  --on-dark: #ffffff;
+  --muted-on-dark: #c8d6e8;
   --gray: #e5e7eb;
   --text: #122033;
   --muted: #48586d;
@@ -45,7 +47,7 @@ button:disabled {
 }
 button:focus-visible,
 input:focus-visible {
-  outline: 3px solid var(--red);
+  outline: 3px solid #4285d4;
   outline-offset: 4px;
 }
 h1,
@@ -67,15 +69,15 @@ h3 {
   font-size: 15px;
 }
 .masthead {
-  border-bottom: 4px solid var(--navy);
+  border-bottom: 4px solid #36597f;
   padding: 22px max(20px, calc((100vw - 960px) / 2));
   display: flex;
   justify-content: space-between;
   align-items: center;
-  background: #fff;
+  background: var(--navy);
 }
 .masthead p {
-  color: var(--navy);
+  color: var(--on-dark);
   font-size: 21px;
   font-weight: 800;
   letter-spacing: 0.06em;
@@ -91,7 +93,7 @@ h3 {
   font-weight: 400;
   letter-spacing: 0;
   margin-left: 15px;
-  color: var(--muted);
+  color: var(--muted-on-dark);
 }
 .phase {
   border: 1px solid var(--navy);
@@ -115,7 +117,7 @@ main {
 .status {
   font-size: 13px;
   min-height: 26px;
-  color: var(--sub-navy);
+  color: var(--muted-on-dark);
   margin: 5px 0;
 }
 .selection,
@@ -176,8 +178,8 @@ fieldset {
   align-items: center;
 }
 .league.red h3 {
-  color: var(--red);
-  border-color: var(--red);
+  color: #a33c50;
+  border-color: #a33c50;
 }
 .league h3 > span {
   font-weight: 400;
@@ -234,12 +236,12 @@ fieldset {
   min-width: 190px;
 }
 .primary {
-  background: var(--navy);
+  background: var(--red);
   color: #fff;
-  border-color: var(--navy);
+  border-color: var(--red);
 }
 .primary:hover:not(:disabled) {
-  background: var(--sub-navy);
+  background: #b51f33;
 }
 .saves ul {
   list-style: none;
@@ -276,8 +278,9 @@ fieldset {
   background: #ffffff;
 }
 .club-panel {
-  box-shadow: 0 4px 0 var(--sub-navy);
-  background: var(--navy);
+  box-shadow: 0 5px 0 #0b1c30;
+  background: var(--sub-navy);
+  border: 1px solid #6385af;
   color: #fff;
   border-radius: 12px;
   padding: 27px;
@@ -338,12 +341,13 @@ fieldset {
   right: 0;
   display: flex;
   justify-content: center;
-  background: #ffffff;
-  border-top: 1px solid var(--navy);
+  background: var(--navy);
+  border-top: 1px solid #6385af;
   padding: 8px 8px calc(8px + env(safe-area-inset-bottom));
   z-index: 5;
 }
 .bottom-nav button {
+  color: var(--muted-on-dark);
   border: 0;
   border-radius: 7px;
   background: transparent;
@@ -360,9 +364,9 @@ fieldset {
   line-height: 1.3;
 }
 .bottom-nav button[aria-current] {
-  box-shadow: inset 0 3px 0 var(--red);
+  box-shadow: inset 0 3px 0 #ffffff;
   color: #ffffff;
-  background: var(--navy);
+  background: var(--sub-navy);
 }
 .placeholder {
   text-align: center;
@@ -381,8 +385,8 @@ fieldset {
   margin: 22px 0;
 }
 .error {
-  background: #fff1f3;
-  border: 1px solid var(--red);
+  background: #fff4df;
+  border: 1px solid #a26a15;
   border-radius: 7px;
   padding: 16px;
   font-size: 13px;
@@ -406,7 +410,7 @@ fieldset {
     display: none;
   }
   .masthead p {
-    color: var(--navy);
+    color: var(--on-dark);
     font-size: 19px;
   }
   main {
@@ -491,17 +495,18 @@ fieldset {
   border-color: #ffffff;
 }
 .bottom-nav button:hover:not(:disabled):not([aria-current]) {
-  background: #edf2f8;
+  background: #24476f;
 }
 .bottom-nav button[aria-current]:hover {
   background: var(--sub-navy);
 }
 h1 {
-  color: var(--navy);
+  color: var(--on-dark);
   font-weight: 900;
 }
 .phase {
-  background: var(--navy);
+  border-color: #6385af;
+  background: var(--sub-navy);
   color: #ffffff;
   font-weight: 800;
 }
@@ -519,4 +524,27 @@ h1 {
   display: block;
   width: 24px;
   height: 24px;
+}
+
+.masthead .eyebrow,
+.page-heading .eyebrow,
+.page-heading > p,
+.coming p {
+  color: var(--muted-on-dark);
+}
+.coming h2 {
+  color: var(--on-dark);
+}
+.club-panel .club-footer button {
+  background: var(--red);
+  border-color: var(--red);
+  color: #ffffff;
+}
+.club-panel .club-footer button:hover:not(:disabled) {
+  background: #b51f33;
+}
+.club-panel .club-footer button:disabled {
+  background: var(--gray);
+  border-color: #aab7c7;
+  color: #556173;
 }
