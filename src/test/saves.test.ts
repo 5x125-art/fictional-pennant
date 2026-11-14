@@ -1,6 +1,7 @@
 import "fake-indexeddb/auto";
 import { beforeEach, describe, expect, it } from "vitest";
 import { getTeam, leagues, teams } from "../data/teams";
+import { generateInitialPlayerWorld } from "../game/players/generate";
 import { createSave, validateSave } from "../game/save";
 import { loadSave, newSave, readSaves, saveCurrent } from "../storage/saves";
 beforeEach(async () => {
@@ -59,5 +60,50 @@ describe("球団・セーブ", () => {
     await expect(loadSave("missing")).rejects.toThrow();
     await expect(saveCurrent("missing")).rejects.toThrow();
     expect(await readSaves()).toEqual(before);
+  });
+});
+
+it("既存schemaVersion 1セーブを生成処理が変更せず、その後も保存・読み込みできる", async () => {
+  // Phase 1形式の既存データを直接登録し、生成との非結合を検証する。
+  await readSaves();
+  const legacy = {
+    schemaVersion: 1,
+    id: "legacy-slot",
+    teamId: "kobe",
+    createdAt: "2026-11-14T00:00:00.000Z",
+    updatedAt: "2026-11-14T00:00:00.000Z",
+  };
+  await new Promise<void>((resolve, reject) => {
+    const request = indexedDB.open("fictional-pennant", 1);
+    request.onerror = () => reject(request.error);
+    request.onsuccess = () => {
+      const db = request.result;
+      expect(db.version).toBe(1);
+      expect(Array.from(db.objectStoreNames)).toEqual(["saves", "settings"]);
+      const tx = db.transaction(["saves", "settings"], "readwrite");
+      tx.objectStore("saves").put(legacy);
+      tx.objectStore("settings").put(legacy.id, "activeId");
+      tx.oncomplete = () => {
+        db.close();
+        resolve();
+      };
+      tx.onabort = () => {
+        db.close();
+        reject(tx.error);
+      };
+    };
+  });
+  generateInitialPlayerWorld(7);
+  expect(await readSaves()).toEqual({ saves: [legacy], activeId: legacy.id });
+  await newSave("sapporo");
+  expect((await readSaves()).saves).toHaveLength(2);
+  await loadSave(legacy.id);
+  await saveCurrent(legacy.id);
+  const after = await readSaves();
+  expect(after.activeId).toBe(legacy.id);
+  expect(after.saves.find((save) => save.id === legacy.id)).toMatchObject({
+    schemaVersion: 1,
+    teamId: "kobe",
+    createdAt: legacy.createdAt,
   });
 });
