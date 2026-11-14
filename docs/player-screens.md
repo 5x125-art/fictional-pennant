@@ -75,3 +75,7 @@ PCとスマートフォンは独立したテストセーブで取得したため
 | 野手の能力 | [画像](screenshots/phase-2c-mobile-fielder.png) | [画像](screenshots/phase-2c-desktop-fielder.png) |
 | 投手の能力 | [画像](screenshots/phase-2c-mobile-pitcher.png) | [画像](screenshots/phase-2c-desktop-pitcher.png) |
 | 過去成績 | [画像](screenshots/phase-2c-mobile-statistics.png) | [画像](screenshots/phase-2c-desktop-statistics.png) |
+
+## Phase 2Dでの一覧拡張
+
+全球団横断検索・詳細条件・個別能力の並べ替えと追加表示は [検索仕様](player-search.md) を参照してください。上記はPhase 2C時点の記録です。標準の自球団表示・詳細4タブ・公開DTO・保存処理を維持し、検索条件は詳細から戻る際に保持します。

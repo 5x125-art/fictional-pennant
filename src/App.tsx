@@ -126,7 +126,7 @@ export function App() {
             架空ペナント<span className="edition">球団運営ゲーム</span>
           </p>
         </div>
-        <span className="phase">PHASE 2C</span>
+        <span className="phase">PHASE 2D</span>
       </header>
       <main>
         <div className="page-heading">

@@ -956,3 +956,148 @@ h1 {
 .players-view main {
   padding-top: 20px;
 }
+
+.player-search-controls {
+  background: white;
+  color: var(--text);
+  border: 1px solid #aab7c7;
+  border-radius: 10px;
+  padding: 20px;
+  margin-bottom: 16px;
+}
+.player-search-controls label {
+  display: grid;
+  gap: 7px;
+  font-size: 12px;
+  font-weight: 700;
+  margin-bottom: 14px;
+  min-width: 0;
+}
+.player-search-controls input,
+.player-search-controls select {
+  width: 100%;
+  min-width: 0;
+  min-height: 46px;
+  padding: 10px;
+  color: var(--text);
+  background: white;
+  border: 1px solid #7d8fa6;
+  border-radius: 5px;
+  font: inherit;
+  font-size: 14px;
+}
+.player-search-controls input:disabled {
+  background: var(--gray);
+  color: #556173;
+}
+.player-search-controls input:focus-visible,
+.player-search-controls select:focus-visible,
+.advanced-search summary:focus-visible {
+  outline: 3px solid #4285d4;
+  outline-offset: 2px;
+}
+.scope-shortcuts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 18px;
+}
+.scope-shortcuts button {
+  flex: 1;
+  padding: 9px;
+  font-size: 12px;
+}
+.scope-shortcuts button:last-child {
+  flex-basis: auto;
+}
+.scope-shortcuts button[aria-pressed="true"] {
+  background: var(--sub-navy);
+  color: white;
+}
+.search-sort-row,
+.search-filter-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  column-gap: 14px;
+}
+.search-sort-row {
+  grid-template-columns: minmax(0, 2fr) minmax(0, 1fr);
+}
+.advanced-search {
+  border-top: 1px solid #aab7c7;
+  padding-top: 14px;
+}
+.advanced-search summary {
+  min-height: 44px;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 700;
+}
+.search-unit-note {
+  font-size: 12px;
+  color: var(--muted);
+  margin: -2px 0 14px;
+}
+.query-summary {
+  color: var(--muted-on-dark);
+  font-size: 12px;
+  overflow-wrap: anywhere;
+  margin: 16px 0 8px;
+}
+.search-result-count {
+  color: white;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  margin: 0 0 20px;
+}
+.search-empty,
+.search-range-error {
+  background: white;
+  color: var(--text);
+  border: 1px solid #aab7c7;
+  padding: 20px;
+  border-radius: 8px;
+}
+.player-card-team {
+  display: block;
+  color: var(--sub-navy);
+  font-size: 12px;
+  margin-top: 8px;
+}
+.player-row-tags {
+  display: flex;
+  flex-shrink: 0;
+  gap: 4px;
+}
+.comparison-value {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  border-top: 1px solid var(--gray);
+  padding: 8px 0;
+  font-size: 12px;
+}
+.comparison-value .ability-value > strong {
+  font-size: 17px;
+}
+.show-more-players {
+  width: 100%;
+  margin-top: 4px;
+}
+@media (min-width: 760px) {
+  .search-filter-grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+@media (max-width: 600px) {
+  .player-search-controls {
+    padding: 16px;
+  }
+  .scope-shortcuts button {
+    padding: 8px 5px;
+  }
+  .player-row-heading > strong {
+    min-width: 0;
+  }
+}
