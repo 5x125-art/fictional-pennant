@@ -1,6 +1,7 @@
 import { teams } from "../../data/teams";
 import { SeededRandom } from "../random/seededRandom";
-import { generationConfig as config, namePools } from "./generationConfig";
+import { generationConfig as config } from "./generationConfig";
+import { createPlayerNameGenerator } from "./names";
 import { fielderHistory, pitcherHistory } from "./history";
 import {
   fieldPositions,
@@ -25,6 +26,7 @@ function commonPlayer(
   teamId: string,
   registration: Registration,
   isForeign: boolean,
+  name: string,
 ) {
   const age = rng.between(
     isForeign ? config.age.foreign : config.age[registration],
@@ -35,11 +37,12 @@ function commonPlayer(
   const background = isForeign ? ("foreign" as const) : rng.pick(backgrounds);
   const entryAge = config.entryAges[background];
   const batsDraw = rng.next();
+  // 旧姓名抽選の2回分を予約し、名前以外の生成結果と継続乱数状態を維持する。
+  rng.next();
+  rng.next();
   return {
     id: `player-${seed.toString(16).padStart(8, "0")}-${serial.toString().padStart(4, "0")}`,
-    name: isForeign
-      ? `${rng.pick(namePools.foreignGiven)}・${rng.pick(namePools.foreignFamily)}`
-      : `${rng.pick(namePools.family)} ${rng.pick(namePools.given)}`,
+    name,
     age,
     teamId,
     registration,
@@ -291,6 +294,7 @@ function generatePitcher(
 /** UI・IndexedDBに依存しない純粋な全12球団生成。2Bではこの結果を保持してから球団を選ぶ。 */
 export function generateInitialPlayerWorld(seed: number): InitialPlayerWorld {
   const rng = new SeededRandom(seed);
+  const names = createPlayerNameGenerator(seed);
   const players: Player[] = [];
   const developmentByPlayerId: Record<string, PlayerDevelopment> = {};
   let serial = 0;
@@ -313,6 +317,7 @@ export function generateInitialPlayerWorld(seed: number): InitialPlayerWorld {
           team.id,
           registration,
           isForeign,
+          names.next(isForeign),
         );
         const player = generateFielder(base, position, bias.batting, rng);
         players.push(player);
@@ -333,6 +338,7 @@ export function generateInitialPlayerWorld(seed: number): InitialPlayerWorld {
           team.id,
           registration,
           isForeign,
+          names.next(isForeign),
         );
         const player = generatePitcher(base, role, bias.pitching, rng);
         players.push(player);
