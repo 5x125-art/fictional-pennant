@@ -1,4 +1,9 @@
 import "fake-indexeddb/auto";
+import {
+  defaultPlayerQuery,
+  searchableAbilities,
+  searchPlayers,
+} from "../game/players/search";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { getTeam, leagues, teams } from "../data/teams";
 import { readPublicRoster } from "../storage/playerViews";
@@ -538,6 +543,21 @@ it("公開選手の読み取りは保存済み状態を使い、再生成・日�
   expect(JSON.stringify(view)).not.toMatch(
     /developmentByPlayerId|growthType|abilityCaps/,
   );
+  for (const ability of searchableAbilities) {
+    const result = searchPlayers(
+      view.players,
+      {
+        ...defaultPlayerQuery(view.managedTeamId),
+        scope: "all",
+        ability: ability.id,
+        sort: ability.id,
+        direction: "desc",
+      },
+      view.managedTeamId,
+    );
+    expect(result.error).toBeNull();
+    expect(result.players).toHaveLength(456);
+  }
   expect(await readPublicRoster(id)).toEqual(view);
   expect(await readGameSave(id)).toEqual(before);
   expect(spy).not.toHaveBeenCalled();
