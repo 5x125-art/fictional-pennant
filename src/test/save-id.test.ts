@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { createSave, validateSave } from "../game/save";
+import { createSaveId } from "../game/saveId";
 
 afterEach(() => vi.unstubAllGlobals());
 
@@ -9,7 +9,7 @@ describe("セーブID生成", () => {
     const randomUUID = vi.fn(() => id);
     const getRandomValues = vi.fn();
     vi.stubGlobal("crypto", { randomUUID, getRandomValues });
-    expect(createSave("sapporo").id).toBe(id);
+    expect(createSaveId()).toBe(id);
     expect(randomUUID).toHaveBeenCalledOnce();
     expect(getRandomValues).not.toHaveBeenCalled();
   });
@@ -19,18 +19,15 @@ describe("セーブID生成", () => {
     (byte) => {
       const getRandomValues = vi.fn((bytes: Uint8Array) => bytes.fill(byte));
       vi.stubGlobal("crypto", { getRandomValues });
-      const save = createSave("yokohama");
+      const id = createSaveId();
       expect(getRandomValues).toHaveBeenCalledOnce();
       expect(getRandomValues.mock.calls[0][0]).toBeInstanceOf(Uint8Array);
       expect(getRandomValues.mock.calls[0][0]).toHaveLength(16);
-      expect(save.id).toBe(
+      expect(id).toBe(
         byte === 0
           ? "00000000-0000-4000-8000-000000000000"
           : "ffffffff-ffff-4fff-bfff-ffffffffffff",
       );
-      expect(save.schemaVersion).toBe(1);
-      expect(save.teamId).toBe("yokohama");
-      expect(validateSave(save)).toEqual(save);
     },
   );
 
@@ -40,6 +37,6 @@ describe("セーブID生成", () => {
         throw new Error("乱数生成失敗");
       },
     });
-    expect(() => createSave("kobe")).toThrow("乱数生成失敗");
+    expect(() => createSaveId()).toThrow("乱数生成失敗");
   });
 });
