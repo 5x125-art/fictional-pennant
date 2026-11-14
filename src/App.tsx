@@ -11,12 +11,12 @@ import {
 } from "./storage/saves";
 import { initializeSession } from "./storage/session";
 import { storageErrorMessage } from "./game/saveErrors";
+import { PlayersScreen } from "./components/players/PlayersScreen";
 import { PlayerPreview } from "./PlayerPreview";
 import type { SaveSummary } from "./game/save";
 const tabs = ["ホーム", "選手", "日程", "データ", "球団運営"] as const;
 type Tab = (typeof tabs)[number];
-const descriptions: Record<Exclude<Tab, "ホーム">, string> = {
-  選手: "選手一覧・能力・成績は、今後の開発で追加します。",
+const descriptions: Record<Exclude<Tab, "ホーム" | "選手">, string> = {
   日程: "日程と試合の進行は、今後の開発で追加します。",
   データ: "順位表・試合結果・個人成績は、今後の開発で追加します。",
   球団運営: "編成・育成・契約は、今後の開発で追加します。",
@@ -118,7 +118,7 @@ export function App() {
     }
   }
   return (
-    <div className="app-shell">
+    <div className={`app-shell ${tab === "選手" ? "players-view" : ""}`}>
       <header className="masthead">
         <div>
           <span className="eyebrow">FICTIONAL PENNANT</span>
@@ -126,7 +126,7 @@ export function App() {
             架空ペナント<span className="edition">球団運営ゲーム</span>
           </p>
         </div>
-        <span className="phase">PHASE 2B</span>
+        <span className="phase">PHASE 2C</span>
       </header>
       <main>
         <div className="page-heading">
@@ -332,11 +332,17 @@ export function App() {
               <div>
                 <h2>ペナントの開幕に向けて</h2>
                 <p>
-                  選手データはセーブに保存されます。選手の詳細画面・試合・日程・編成は準備中です。
+                  選手メニューから保存済みの選手と能力・過去成績を確認できます。試合・日程・編成は準備中です。
                 </p>
               </div>
             </aside>
           </>
+        ) : tab === "選手" ? (
+          <PlayersScreen
+            key={active?.id ?? "no-save"}
+            saveId={active?.id ?? null}
+            onHome={() => setTab("ホーム")}
+          />
         ) : (
           <section className="placeholder">
             <span className="eyebrow">COMING SOON</span>
