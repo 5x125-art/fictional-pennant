@@ -1,3 +1,5 @@
+import { playerSquad } from "../roster/roster";
+import type { RosterState, Squad } from "../roster/types";
 import {
   fieldPositions,
   type BattingStats,
@@ -21,6 +23,7 @@ interface PublicBase extends Pick<
   | "condition"
   | "isForeign"
 > {
+  readonly squad: Squad;
   readonly contract: {
     readonly years: number;
     readonly annualSalaryManYen: number;
@@ -95,8 +98,12 @@ function history<T>(
   }));
 }
 /** ネストもホワイトリストで新しく構築する。元選手オブジェクトをそのままUIへ渡さない。 */
-export function toPublicPlayer(player: Player): PublicPlayer {
+export function toPublicPlayer(
+  player: Player,
+  roster: RosterState,
+): PublicPlayer {
   const base: PublicBase = {
+    squad: playerSquad(roster, player),
     id: player.id,
     name: player.name,
     age: player.age,

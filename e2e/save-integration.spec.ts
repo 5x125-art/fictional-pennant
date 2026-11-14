@@ -19,7 +19,7 @@ async function persisted(page: Page, pending = false) {
       const id = pending ? draft.id : await get("settings", "activeId");
       const meta = pending ? null : await get("saves", id);
       const world = pending ? draft.world : (await get("worlds", id)).world;
-      const { phase: _phase, ...state } = world;
+      const { phase: _phase, roster: _roster, ...state } = world;
       const bytes = new TextEncoder().encode(JSON.stringify(state));
       const hash = Array.from(
         new Uint8Array(await crypto.subtle.digest("SHA-256", bytes)),
@@ -107,7 +107,7 @@ test("準備プレビューの切替・球団選択・再読み込みでリロ�
   ).toContainText("松山シトラス");
   const saved = await persisted(page);
   expect(saved.id).toBe(before.id);
-  expect(saved.meta?.schemaVersion).toBe(2);
+  expect(saved.meta?.schemaVersion).toBe(3);
   expect(saved.seed).toBe(before.seed);
   expect(saved.hash).toBe(before.hash);
   expect(saved.count).toBe(912);
@@ -191,7 +191,7 @@ test("旧DBから起動し、球団・ID・日時を維持して移行・再読�
   const first = await persisted(page);
   expect(first.id).toBe("old-slot");
   expect(first.meta).toMatchObject({
-    schemaVersion: 2,
+    schemaVersion: 3,
     teamId: "kobe",
     createdAt: "2026-11-01T01:00:00.000Z",
     updatedAt: "2026-11-02T02:00:00.000Z",

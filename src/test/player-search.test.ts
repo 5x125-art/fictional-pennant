@@ -1,3 +1,4 @@
+import { createInitialRosters } from "../game/roster/roster";
 import { describe, expect, it } from "vitest";
 import { teams } from "../data/teams";
 import { generateInitialPlayerWorld } from "../game/players/generate";
@@ -12,7 +13,11 @@ import {
   searchPlayers,
   type PlayerQuery,
 } from "../game/players/search";
-const players = generateInitialPlayerWorld(2317).players.map(toPublicPlayer);
+const world = generateInitialPlayerWorld(2317);
+const rosterState = createInitialRosters(world.players);
+const players = world.players.map((player) =>
+  toPublicPlayer(player, rosterState),
+);
 const own = teams[0].id;
 const query = (patch: Partial<PlayerQuery> = {}): PlayerQuery => ({
   ...defaultPlayerQuery(own),
