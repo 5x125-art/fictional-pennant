@@ -161,6 +161,15 @@ export function PlayersScreen({
               : "横断検索"}
         </span>
       </div>
+      <p className="roster-registration-count">
+        自球団の1軍登録：
+        {
+          roster.players.filter(
+            (p) => p.teamId === roster.managedTeamId && p.squad === "first",
+          ).length
+        }
+        人 / 上限31人
+      </p>
       <PlayerSearchControls
         query={query}
         onChange={changeQuery}

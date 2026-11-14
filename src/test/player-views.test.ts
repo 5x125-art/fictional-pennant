@@ -1,3 +1,4 @@
+import { createInitialRosters } from "../game/roster/roster";
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
@@ -14,10 +15,13 @@ import { AbilityValue } from "../components/players/AbilityValue";
 import { PlayerDetail } from "../components/players/PlayerDetail";
 import { PlayerStats } from "../components/players/PlayerStats";
 const world = generateInitialPlayerWorld(20261114);
+const rosterState = createInitialRosters(world.players);
 
 describe("公開選手DTO", () => {
   it("全12球団・912人の現在能力と基礎成績を、非公開情報なしで保持する", () => {
-    const players = world.players.map(toPublicPlayer);
+    const players = world.players.map((player) =>
+      toPublicPlayer(player, rosterState),
+    );
     expect(players).toHaveLength(912);
     for (const teamId of new Set(players.map((player) => player.teamId)))
       expect(players.filter((player) => player.teamId === teamId)).toHaveLength(
@@ -63,7 +67,7 @@ describe("公開選手DTO", () => {
           growthType: "late",
           abilityCaps: { secret: 99 },
         });
-      expect(JSON.stringify(toPublicPlayer(player))).not.toMatch(
+      expect(JSON.stringify(toPublicPlayer(player, rosterState))).not.toMatch(
         /growthType|abilityCaps|developmentByPlayerId|secret/,
       );
     }
@@ -72,7 +76,9 @@ describe("公開選手DTO", () => {
     const roster = {
       saveId: "test",
       managedTeamId: "sapporo",
-      players: world.players.map(toPublicPlayer),
+      players: world.players.map((player) =>
+        toPublicPlayer(player, rosterState),
+      ),
     };
     expect(findPublicPlayer(roster, roster.players[0].id)).toBe(
       roster.players[0],
@@ -144,7 +150,10 @@ describe("基礎成績の計算・表記", () => {
     expect(html).toContain(`${rank}ランク`);
   });
   it("保存済み過去成績のない選手に今季成績を捏造しない", () => {
-    const player = { ...toPublicPlayer(world.players[0]), history: [] };
+    const player = {
+      ...toPublicPlayer(world.players[0], rosterState),
+      history: [],
+    };
     const html = renderToStaticMarkup(createElement(PlayerStats, { player }));
     expect(html).toContain("保存済みの過去成績はありません");
     expect(html).toContain("試合処理は未実装");

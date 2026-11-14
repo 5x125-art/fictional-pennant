@@ -61,6 +61,14 @@ export function PlayerDetail({
           {player.kind === "pitcher" ? "投手" : "野手"}
         </p>
         <h2>{player.name}</h2>
+        <p className="squad-detail">
+          現在所属：
+          {player.squad === "first"
+            ? "1軍"
+            : player.squad === "farm"
+              ? "2軍"
+              : "所属未取得"}
+        </p>
         <p>
           {player.age}歳 / {handLabels[player.throws]}投
           {handLabels[player.bats]}打 / {positionLabels[player.primaryPosition]}{" "}

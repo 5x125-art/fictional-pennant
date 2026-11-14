@@ -84,6 +84,13 @@ export function PlayerCard({
         <span className="player-row-heading">
           <strong>{player.name}</strong>
           <span className="player-row-tags">
+            <span className={`squad-tag ${player.squad ?? "unknown"}`}>
+              {player.squad === "first"
+                ? "1軍"
+                : player.squad === "farm"
+                  ? "2軍"
+                  : "所属未取得"}
+            </span>
             <span className="registration-tag">
               {player.kind === "pitcher" ? "投手" : "野手"}
             </span>

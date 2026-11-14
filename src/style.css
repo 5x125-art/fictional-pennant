@@ -1101,3 +1101,29 @@ h1 {
     min-width: 0;
   }
 }
+.squad-tag {
+  display: inline-block;
+  border: 1px solid #8ea2bc;
+  border-radius: 4px;
+  padding: 2px 6px;
+  font-size: 10px;
+  font-weight: 800;
+  color: var(--navy);
+  background: #eaf0f7;
+  white-space: nowrap;
+}
+.squad-tag.first {
+  background: var(--sub-navy);
+  color: white;
+  border-color: var(--sub-navy);
+}
+.player-row-tags {
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  max-width: 48%;
+}
+.roster-registration-count {
+  color: var(--muted-on-dark);
+  font-size: 13px;
+  margin-top: -8px;
+}

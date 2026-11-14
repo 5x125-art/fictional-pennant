@@ -1,3 +1,4 @@
+import * as rosters from "../game/roster/roster";
 import "fake-indexeddb/auto";
 import {
   defaultPlayerQuery,
@@ -125,7 +126,7 @@ describe("球団・セーブ回帰", () => {
   });
 });
 
-describe("準備世界とschemaVersion 2", () => {
+describe("準備世界とschemaVersion 3", () => {
   it("同時準備でも1回だけ生成し、球団変更・接続再開後も世界全体と非公開情報を保持する", async () => {
     const spy = vi.spyOn(generation, "generateInitialPlayerWorld");
     const [a, b] = await Promise.all([prepareNewGame(), prepareNewGame()]);
@@ -144,11 +145,12 @@ describe("準備世界とschemaVersion 2", () => {
     const saved = await readGameSave(a.id);
     const { phase, ...world } = before.world;
     expect(saved).toMatchObject({
-      schemaVersion: 2,
+      schemaVersion: 3,
       id: a.id,
       teamId: "niigata",
     });
-    expect(saved.world).toEqual(world);
+    const { roster: _roster, ...savedPlayerWorld } = saved.world;
+    expect(savedPlayerWorld).toEqual(world);
     expect(saved.world.players).toHaveLength(912);
     for (const team of teams)
       expect(
@@ -266,7 +268,7 @@ describe("旧形式移行と失敗時の保護", () => {
     expect(spy).not.toHaveBeenCalled();
     await loadSave(legacy.id);
     const migrated = await readGameSave(legacy.id);
-    expect(migrated).toMatchObject({ ...legacy, schemaVersion: 2 });
+    expect(migrated).toMatchObject({ ...legacy, schemaVersion: 3 });
     expect(migrated.world.seed).toBe(migrationSeed(legacy.id));
     expect(migrated.world.players).toHaveLength(912);
     expect(
@@ -275,7 +277,7 @@ describe("旧形式移行と失敗時の保護", () => {
     ).toBe(1);
     expect(
       (await readSaves()).saves.map((save) => save.schemaVersion).sort(),
-    ).toEqual([1, 2]);
+    ).toEqual([1, 3]);
     await loadSave(legacy.id);
     expect(await readGameSave(legacy.id)).toEqual(migrated);
     expect(spy).toHaveBeenCalledOnce();
@@ -574,4 +576,198 @@ it("スロットを切り替えても公開DTOに別スロットの選手を混�
   expect(await readPublicRoster(firstId)).toEqual(first);
   await loadSave(secondId);
   expect(await readPublicRoster(secondId)).toEqual(second);
+});
+
+async function installVersion2(id = "v2-slot", seed = 97531) {
+  await readSaves();
+  const { phase: _phase, ...world } =
+    generation.generateInitialPlayerWorld(seed);
+  const save = {
+    schemaVersion: 2 as const,
+    id,
+    teamId: "kobe",
+    createdAt: "2025-01-01T00:00:00.000Z",
+    updatedAt: "2025-02-01T00:00:00.000Z",
+    world: { ...world, randomState: 1234567 },
+  };
+  await put("saves", { ...save, world: undefined, initialSeed: seed });
+  await put("worlds", { id, world: save.world });
+  return save;
+}
+describe("v3所属状態と旧世界の保護", () => {
+  it("v2の全選手・非公開成長・日時・シード・乱数状態を保持し、一度だけ所属を設定する", async () => {
+    const old = await installVersion2();
+    const originalMeta = await raw("saves", old.id);
+    const generate = vi.spyOn(generation, "generateInitialPlayerWorld");
+    const initialize = vi.spyOn(rosters, "createInitialRosters");
+    expect((await readSaves()).saves[0].schemaVersion).toBe(2);
+    expect(await raw("saves", old.id)).toEqual(originalMeta);
+    await expect(readGameSave(old.id)).rejects.toThrow("移行");
+    await loadSave(old.id);
+    const migrated = await readGameSave(old.id);
+    const { roster, ...world } = migrated.world;
+    expect({ ...migrated, schemaVersion: 2, world }).toEqual(old);
+    expect(rosters.validateRosterState(world.players, roster).ok).toBe(true);
+    expect(Object.keys(roster.byTeam)).toHaveLength(12);
+    expect(initialize).toHaveBeenCalledOnce();
+    await loadSave(old.id);
+    await readPublicRoster(old.id);
+    await saveCurrent(old.id);
+    expect((await readGameSave(old.id)).world).toEqual(migrated.world);
+    expect(initialize).toHaveBeenCalledOnce();
+    expect(generate).not.toHaveBeenCalled();
+    const view = await readPublicRoster(old.id);
+    for (const p of view.players)
+      expect(p.squad).toBe(rosters.playerSquad(roster, p));
+    expect(JSON.stringify(view)).not.toMatch(
+      /developmentByPlayerId|growthType|abilityCaps|completedJapanSeasons/,
+    );
+  });
+  it.each(["worlds", "saves", "settings"])(
+    "v2移行中の%s書込失敗で元メタデータ・本体・現在スロットを完全保持",
+    async (store) => {
+      const old = await installVersion2();
+      await put("settings", "previous", "activeId");
+      const meta = await raw("saves", old.id),
+        body = await raw("worlds", old.id);
+      const original = IDBObjectStore.prototype.put;
+      const spy = vi
+        .spyOn(IDBObjectStore.prototype, "put")
+        .mockImplementation(function (
+          this: IDBObjectStore,
+          value: unknown,
+          key?: IDBValidKey,
+        ) {
+          if (this.name === store)
+            throw new DOMException("full", "QuotaExceededError");
+          return key === undefined
+            ? original.call(this, value)
+            : original.call(this, value, key);
+        });
+      await expect(loadSave(old.id)).rejects.toMatchObject({
+        name: "QuotaExceededError",
+      });
+      spy.mockRestore();
+      expect(await raw("saves", old.id)).toEqual(meta);
+      expect(await raw("worlds", old.id)).toEqual(body);
+      expect(await raw("settings", "activeId")).toBe("previous");
+      await loadSave(old.id);
+      expect((await readGameSave(old.id)).schemaVersion).toBe(3);
+    },
+  );
+  it("書込み要求の成功後でもトランザクションabortならv2本体・日時を巻き戻す", async () => {
+    const old = await installVersion2();
+    const meta = await raw("saves", old.id),
+      body = await raw("worlds", old.id);
+    await put("settings", "previous", "activeId");
+    const original = IDBObjectStore.prototype.put;
+    const spy = vi
+      .spyOn(IDBObjectStore.prototype, "put")
+      .mockImplementation(function (
+        this: IDBObjectStore,
+        value: unknown,
+        key?: IDBValidKey,
+      ) {
+        const request =
+          key === undefined
+            ? original.call(this, value)
+            : original.call(this, value, key);
+        if (this.name === "settings")
+          request.addEventListener("success", () => this.transaction.abort());
+        return request;
+      });
+    await expect(loadSave(old.id)).rejects.toThrow();
+    spy.mockRestore();
+    expect(await raw("saves", old.id)).toEqual(meta);
+    expect(await raw("worlds", old.id)).toEqual(body);
+    expect(await raw("settings", "activeId")).toBe("previous");
+  });
+  it("壊れたv2を移行・再生成せず保持する", async () => {
+    const old = await installVersion2();
+    const broken = { ...old.world, randomState: -1 };
+    await put("worlds", { id: old.id, world: broken });
+    const meta = await raw("saves", old.id);
+    const spy = vi.spyOn(generation, "generateInitialPlayerWorld");
+    await expect(loadSave(old.id)).rejects.toThrow("破損");
+    expect(await raw("saves", old.id)).toEqual(meta);
+    expect(await raw("worlds", old.id)).toEqual({ id: old.id, world: broken });
+    expect(spy).not.toHaveBeenCalled();
+  });
+  it("変更後の所属・抹消日を保存・再読込し、別スロットへ混ぜず初期化しない", async () => {
+    const first = await start("sapporo");
+    const saved = await readGameSave(first);
+    const player = saved.world.roster.byTeam.sapporo.firstTeamIds[0];
+    const change = rosters.deregisterFirstTeam(
+      saved.world.players,
+      saved.world.roster,
+      "sapporo",
+      player,
+    );
+    if (!change.ok) throw Error();
+    const state = { ...change.state, currentDay: 9 };
+    await put("worlds", {
+      id: first,
+      world: { ...saved.world, roster: state },
+    });
+    const second = await start("kobe"),
+      other = await readGameSave(second);
+    const initialize = vi.spyOn(rosters, "createInitialRosters");
+    await loadSave(first);
+    await saveCurrent(first);
+    expect((await readGameSave(first)).world.roster).toEqual(state);
+    expect(
+      (await readPublicRoster(first)).players.find((p) => p.id === player)
+        ?.squad,
+    ).toBe("farm");
+    await loadSave(second);
+    expect((await readGameSave(second)).world).toEqual(other.world);
+    expect(initialize).not.toHaveBeenCalled();
+    const corrupt = {
+      ...state,
+      byTeam: { ...state.byTeam, sapporo: { firstTeamIds: [player, player] } },
+    };
+    await put("worlds", {
+      id: first,
+      world: { ...saved.world, roster: corrupt },
+    });
+    const before = await raw("worlds", first);
+    await expect(loadSave(first)).rejects.toThrow("所属");
+    await expect(saveCurrent(first)).rejects.toThrow();
+    expect(await raw("worlds", first)).toEqual(before);
+    expect((await readSaves()).activeId).toBe(second);
+  });
+});
+
+it("所属初期化が失敗したv2はメタデータ・本体を完全保持する", async () => {
+  const old = await installVersion2(),
+    meta = await raw("saves", old.id),
+    body = await raw("worlds", old.id);
+  const spy = vi
+    .spyOn(rosters, "createInitialRosters")
+    .mockImplementation(() => {
+      throw Error("roster initialization failed");
+    });
+  await expect(loadSave(old.id)).rejects.toThrow(
+    "roster initialization failed",
+  );
+  spy.mockRestore();
+  expect(await raw("saves", old.id)).toEqual(meta);
+  expect(await raw("worlds", old.id)).toEqual(body);
+  expect((await readSaves()).activeId).toBeNull();
+});
+it("v1/v2/v3の混在一覧は本体を読まず勝手に移行しない", async () => {
+  await start("sapporo");
+  const old = await installVersion2();
+  await put("saves", legacy);
+  const before = await raw("worlds", old.id);
+  const requests = vi.spyOn(IDBTransaction.prototype, "objectStore");
+  const list = await readSaves();
+  expect(list.saves.map((s) => s.schemaVersion).sort()).toEqual([1, 2, 3]);
+  expect(
+    requests.mock.calls.every(
+      ([name]) => name === "saves" || name === "settings",
+    ),
+  ).toBe(true);
+  requests.mockRestore();
+  expect(await raw("worlds", old.id)).toEqual(before);
 });

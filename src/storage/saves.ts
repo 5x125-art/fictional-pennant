@@ -5,6 +5,7 @@ import { validatePlayerWorld } from "../game/players/validate";
 import { createSaveId } from "../game/saveId";
 import {
   createSave,
+  migrateVersion2Save,
   migrationSeed,
   SaveDataError,
   toMetadata,
@@ -116,7 +117,7 @@ async function transaction<T>(
 }
 
 export async function readSaves(): Promise<SaveList> {
-  // worlds/draftsストアには触れない。混在するv1/v2メタデータのみを読む。
+  // worlds/draftsストアには触れない。混在するv1/v2/v3メタデータのみを読む。
   return transaction(["saves", "settings"], "readonly", (tx, result, guard) => {
     const saves = tx.objectStore("saves").getAll();
     const active = tx.objectStore("settings").get("activeId");
@@ -292,13 +293,13 @@ function withSave(
       const { phase: _phase, ...world } = generateInitialPlayerWorld(
         migrationSeed(id),
       );
-      const save: GameSave = {
+      const save = migrateVersion2Save({
         ...toSummary(metadata),
         schemaVersion: 2,
         world,
-      };
+      });
       validateSave(save);
-      tx.objectStore("worlds").add({ id, world });
+      tx.objectStore("worlds").add({ id, world: save.world });
       tx.objectStore("saves").put(toMetadata(save));
       done(save);
     } else {
@@ -313,7 +314,17 @@ function withSave(
           throw new SaveDataError(
             "選手データとスロット情報が一致しません。データは変更していません。",
           );
-        done(validateSave({ ...toSummary(metadata), world: record.world }));
+        const full = { ...toSummary(metadata), world: record.world };
+        if (metadata.schemaVersion === 2) {
+          if (!migrate)
+            throw new SaveDataError(
+              "旧セーブは読み込み操作で移行してください。",
+            );
+          const save = migrateVersion2Save(full);
+          tx.objectStore("worlds").put({ id, world: save.world });
+          tx.objectStore("saves").put(toMetadata(save));
+          done(save);
+        } else done(validateSave(full));
       });
     }
   });

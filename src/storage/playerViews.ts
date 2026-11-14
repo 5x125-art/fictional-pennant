@@ -9,13 +9,15 @@ export interface PublicRoster {
   readonly managedTeamId: string;
   readonly players: readonly PublicPlayer[];
 }
-/** 既に読み込み・移行したv2セーブを読み取るだけ。生成・書き込みはしない。 */
+/** 既に読み込み・移行したv3セーブを読み取るだけ。生成・書き込みはしない。 */
 export async function readPublicRoster(saveId: string): Promise<PublicRoster> {
   const save = await readGameSave(saveId);
   return {
     saveId: save.id,
     managedTeamId: save.teamId,
-    players: save.world.players.map(toPublicPlayer),
+    players: save.world.players.map((player) =>
+      toPublicPlayer(player, save.world.roster),
+    ),
   };
 }
 export function findPublicPlayer(
