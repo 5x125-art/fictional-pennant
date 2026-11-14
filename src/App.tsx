@@ -6,10 +6,10 @@ import {
   readSaves,
   saveCurrent,
   prepareNewGame,
-  readPendingGame,
   selectDraftTeam,
   type DraftView,
 } from "./storage/saves";
+import { initializeSession } from "./storage/session";
 import { storageErrorMessage } from "./game/saveErrors";
 import { PlayerPreview } from "./PlayerPreview";
 import type { SaveSummary } from "./game/save";
@@ -36,6 +36,7 @@ export function App() {
   const [selected, setSelected] = useState("");
   const [busy, setBusy] = useState(true);
   const [error, setError] = useState("");
+  const [issues, setIssues] = useState<string[]>([]);
   const [message, setMessage] = useState("");
   const active = state.saves.find((save) => save.id === state.activeId);
   const team = active ? getTeam(active.teamId) : null;
@@ -43,25 +44,15 @@ export function App() {
     let cancelled = false;
     async function initialize() {
       try {
-        let list = await readSaves();
+        const session = await initializeSession();
         if (cancelled) return;
-        setState({ saves: list.saves, activeId: null });
-        if (list.activeId) {
-          await loadSave(list.activeId);
-          list = await readSaves();
-          if (cancelled) return;
-          setState({ saves: list.saves, activeId: list.activeId });
-        }
-        let pending = await readPendingGame();
-        if (!pending && !list.activeId && !list.issues.length)
-          pending = await prepareNewGame();
-        if (cancelled) return;
-        if (pending) {
-          setDraft(pending);
-          setSelected(pending.selectedTeamId ?? "");
+        setState({ saves: session.saves, activeId: session.activeId });
+        setIssues(session.issues);
+        if (session.draft) {
+          setDraft(session.draft);
+          setSelected(session.draft.selectedTeamId ?? "");
           setCreating(true);
         }
-        if (list.issues.length) setError(list.issues.join(" "));
       } catch (error) {
         if (!cancelled)
           setError(
@@ -87,7 +78,7 @@ export function App() {
       setCreating(false);
       setDraft(null);
       setSelected("");
-      setError(list.issues.join(" "));
+      setIssues((previous) => [...new Set([...previous, ...list.issues])]);
       setMessage(success);
     } catch (error) {
       setError(storageErrorMessage(error));
@@ -143,9 +134,9 @@ export function App() {
           <h1>{tab}</h1>
           <p>12球団から始まる、あなただけの球団運営。</p>
         </div>
-        {error && (
+        {(error || issues.length > 0) && (
           <div className="error" role="alert">
-            {error}
+            {[...issues, error].filter(Boolean).join(" ")}
           </div>
         )}
         <p className="status" role="status">
@@ -323,7 +314,7 @@ export function App() {
                   セーブはまだありません。球団を選んで最初の一歩を。
                 </p>
               )}
-              {active && !creating && (
+              {!creating && (
                 <button
                   className="new-slot"
                   disabled={busy}

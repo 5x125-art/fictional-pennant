@@ -1,6 +1,7 @@
 import "fake-indexeddb/auto";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { getTeam, leagues, teams } from "../data/teams";
+import { initializeSession } from "../storage/session";
 import * as generation from "../game/players/generate";
 import {
   migrationSeed,
@@ -426,4 +427,100 @@ it("旧スロットIDのシード導出は固定したFNV-1aで再現する", ()
   expect(migrationSeed("hello")).toBe(0x4f9f2cab);
   expect(migrationSeed("legacy-slot")).toBe(migrationSeed("legacy-slot"));
   expect(migrationSeed("legacy-slot")).not.toBe(migrationSeed("other-slot"));
+});
+
+describe("破損・未対応スロットがある場合の起動", () => {
+  const cases = [
+    { label: "破損した旧セーブのみ", schema: 1, active: false, healthy: false },
+    {
+      label: "未対応セーブと正常スロットの混在",
+      schema: 99,
+      active: false,
+      healthy: true,
+    },
+    {
+      label: "アクティブ本体の破損と正常スロットの混在",
+      schema: 2,
+      active: true,
+      healthy: true,
+    },
+    {
+      label: "アクティブ旧セーブが破損",
+      schema: 1,
+      active: true,
+      healthy: false,
+    },
+    {
+      label: "正常なアクティブスロットと未対応セーブの混在",
+      schema: 99,
+      active: false,
+      healthy: true,
+      activeHealthy: true,
+    },
+  ];
+  it.each(cases)(
+    "$label: 警告しながら別スロットを作成でき、元データを変更しない",
+    async (scenario) => {
+      const bad = {
+        ...legacy,
+        id: "bad",
+        schemaVersion: scenario.schema,
+        updatedAt: scenario.schema === 1 ? "broken-date" : legacy.updatedAt,
+        ...(scenario.schema === 2 ? { initialSeed: 42 } : {}),
+        marker: "元データを保護",
+      };
+      await put("saves", bad);
+      if (scenario.healthy) await put("saves", { ...legacy, id: "healthy" });
+      const activeId = scenario.activeHealthy
+        ? "healthy"
+        : scenario.active
+          ? "bad"
+          : null;
+      if (activeId) await put("settings", activeId, "activeId");
+      await readSaves();
+      const badBody = {
+        id: "bad",
+        world: {
+          generationVersion: 1,
+          seed: 42,
+          randomState: -1,
+          players: [],
+          developmentByPlayerId: {},
+        },
+      };
+      if (scenario.schema === 2) await put("worlds", badBody);
+      const spy = vi.spyOn(generation, "generateInitialPlayerWorld");
+      const session = await initializeSession();
+      expect(session.issues.length).toBeGreaterThan(0);
+      expect(session.activeId).toBe(scenario.activeHealthy ? "healthy" : null);
+      expect(session.saves.some((save) => save.id === "healthy")).toBe(
+        scenario.healthy,
+      );
+      // 生成されるのは新規準備世界、または正常な旧アクティブの移行だけ。
+      expect(spy).toHaveBeenCalledOnce();
+      expect(await raw("saves", "bad")).toEqual(bad);
+      expect(await raw("worlds", "bad")).toEqual(
+        scenario.schema === 2 ? badBody : undefined,
+      );
+      if (scenario.active)
+        expect(await raw("settings", "activeId")).toBe("bad");
+      let healthyWorld;
+      if (scenario.healthy) {
+        await loadSave("healthy");
+        healthyWorld = await readGameSave("healthy");
+        expect(healthyWorld.teamId).toBe("kobe");
+      }
+      const draft = session.draft ?? (await prepareNewGame());
+      expect(draft.id).not.toBe("bad");
+      await selectDraftTeam(draft.id, "sapporo");
+      await newSave("sapporo", draft.id);
+      expect((await readGameSave(draft.id)).world.players).toHaveLength(912);
+      expect(await raw("saves", "bad")).toEqual(bad);
+      expect(await raw("worlds", "bad")).toEqual(
+        scenario.schema === 2 ? badBody : undefined,
+      );
+      if (healthyWorld)
+        expect(await readGameSave("healthy")).toEqual(healthyWorld);
+    },
+  );
 });
