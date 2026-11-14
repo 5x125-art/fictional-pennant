@@ -88,11 +88,10 @@ test("保存が拒否された場合は成功表示せずエラーを表示す�
   await expect(page.getByRole("alert")).toContainText(
     "セーブを読み込めませんでした",
   );
-  await page.getByRole("radio", { name: "札幌オーロラズ" }).check();
-  await page.getByRole("button", { name: "この球団で始める" }).click();
-  await expect(page.getByRole("alert")).toContainText(
-    "操作を完了できませんでした",
-  );
+  await expect(
+    page.getByRole("button", { name: "この球団で始める" }),
+  ).toBeDisabled();
+  await expect(page.getByRole("status")).not.toContainText("作成しました");
   await expect(
     page.getByRole("region", { name: "現在の操作球団" }),
   ).toHaveCount(0);

@@ -548,3 +548,56 @@ h1 {
   border-color: #aab7c7;
   color: #556173;
 }
+
+.roster-preview {
+  margin-top: 24px;
+  border: 1px solid #aab7c7;
+  border-radius: 7px;
+  padding: 14px;
+}
+.roster-preview summary {
+  cursor: pointer;
+  min-height: 44px;
+  font-weight: 700;
+  color: var(--navy);
+}
+.preview-team-label {
+  display: grid;
+  gap: 8px;
+  margin: 16px 0;
+  font-size: 13px;
+  font-weight: 700;
+}
+.preview-team-label select {
+  min-height: 44px;
+  width: 100%;
+  max-width: 100%;
+  padding: 8px;
+  border: 1px solid var(--navy);
+  border-radius: 5px;
+  font: inherit;
+  color: var(--navy);
+  background: white;
+}
+.roster-preview ul {
+  list-style: none;
+  padding: 0;
+  max-height: 420px;
+  overflow-y: auto;
+}
+.roster-preview li {
+  padding: 12px 0;
+  border-bottom: 1px solid var(--gray);
+  overflow-wrap: anywhere;
+}
+.roster-preview li span,
+.roster-preview li p {
+  display: block;
+  font-size: 12px;
+  color: var(--muted);
+}
+.roster-preview summary:focus-visible,
+.preview-team-label select:focus-visible {
+  outline: 3px solid #4285d4;
+  outline-offset: 3px;
+}

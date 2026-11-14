@@ -1,7 +1,18 @@
 import { useEffect, useState, type CSSProperties } from "react";
 import { getTeam, leagues, teams } from "./data/teams";
-import { loadSave, newSave, readSaves, saveCurrent } from "./storage/saves";
-import type { GameSave } from "./game/save";
+import {
+  loadSave,
+  newSave,
+  readSaves,
+  saveCurrent,
+  prepareNewGame,
+  readPendingGame,
+  selectDraftTeam,
+  type DraftView,
+} from "./storage/saves";
+import { storageErrorMessage } from "./game/saveErrors";
+import { PlayerPreview } from "./PlayerPreview";
+import type { SaveSummary } from "./game/save";
 const tabs = ["ホーム", "選手", "日程", "データ", "球団運営"] as const;
 type Tab = (typeof tabs)[number];
 const descriptions: Record<Exclude<Tab, "ホーム">, string> = {
@@ -17,9 +28,10 @@ const dateFormat = new Intl.DateTimeFormat("ja-JP", {
 export function App() {
   const [tab, setTab] = useState<Tab>("ホーム");
   const [state, setState] = useState<{
-    saves: GameSave[];
+    saves: SaveSummary[];
     activeId: string | null;
   }>({ saves: [], activeId: null });
+  const [draft, setDraft] = useState<DraftView | null>(null);
   const [creating, setCreating] = useState(false);
   const [selected, setSelected] = useState("");
   const [busy, setBusy] = useState(true);
@@ -28,14 +40,41 @@ export function App() {
   const active = state.saves.find((save) => save.id === state.activeId);
   const team = active ? getTeam(active.teamId) : null;
   useEffect(() => {
-    readSaves()
-      .then(setState)
-      .catch(() =>
-        setError(
-          "セーブを読み込めませんでした。ブラウザの保存設定を確認して再読み込みしてください。既存データは変更していません。",
-        ),
-      )
-      .finally(() => setBusy(false));
+    let cancelled = false;
+    async function initialize() {
+      try {
+        let list = await readSaves();
+        if (cancelled) return;
+        setState({ saves: list.saves, activeId: null });
+        if (list.activeId) {
+          await loadSave(list.activeId);
+          list = await readSaves();
+          if (cancelled) return;
+          setState({ saves: list.saves, activeId: list.activeId });
+        }
+        let pending = await readPendingGame();
+        if (!pending && !list.activeId && !list.issues.length)
+          pending = await prepareNewGame();
+        if (cancelled) return;
+        if (pending) {
+          setDraft(pending);
+          setSelected(pending.selectedTeamId ?? "");
+          setCreating(true);
+        }
+        if (list.issues.length) setError(list.issues.join(" "));
+      } catch (error) {
+        if (!cancelled)
+          setError(
+            `セーブを読み込めませんでした。${storageErrorMessage(error)} 再読み込みしてください。`,
+          );
+      } finally {
+        if (!cancelled) setBusy(false);
+      }
+    }
+    void initialize();
+    return () => {
+      cancelled = true;
+    };
   }, []);
   async function perform(action: () => Promise<void>, success: string) {
     setBusy(true);
@@ -43,14 +82,46 @@ export function App() {
     setMessage("");
     try {
       await action();
-      setState(await readSaves());
+      const list = await readSaves();
+      setState({ saves: list.saves, activeId: list.activeId });
       setCreating(false);
+      setDraft(null);
       setSelected("");
+      setError(list.issues.join(" "));
       setMessage(success);
-    } catch {
-      setError(
-        "操作を完了できませんでした。保存容量やブラウザの設定を確認して、もう一度お試しください。",
-      );
+    } catch (error) {
+      setError(storageErrorMessage(error));
+    } finally {
+      setBusy(false);
+    }
+  }
+  async function beginNewGame() {
+    setBusy(true);
+    setError("");
+    setMessage("");
+    try {
+      const pending = await prepareNewGame();
+      setDraft(pending);
+      setSelected(pending.selectedTeamId ?? "");
+      setCreating(true);
+    } catch (error) {
+      setError(storageErrorMessage(error));
+    } finally {
+      setBusy(false);
+    }
+  }
+  async function chooseTeam(teamId: string) {
+    if (!draft) return;
+    const previous = selected;
+    setSelected(teamId);
+    setBusy(true);
+    setError("");
+    setMessage("");
+    try {
+      await selectDraftTeam(draft.id, teamId);
+    } catch (error) {
+      setSelected(previous);
+      setError(storageErrorMessage(error));
     } finally {
       setBusy(false);
     }
@@ -64,7 +135,7 @@ export function App() {
             架空ペナント<span className="edition">球団運営ゲーム</span>
           </p>
         </div>
-        <span className="phase">PHASE 1</span>
+        <span className="phase">PHASE 2B</span>
       </header>
       <main>
         <div className="page-heading">
@@ -122,7 +193,7 @@ export function App() {
                 <p className="hint">
                   操作球団はセーブごとに固定されます。別の球団で始める場合は、新しいスロットを作成してください。
                 </p>
-                <fieldset disabled={busy}>
+                <fieldset disabled={busy || !draft}>
                   <legend className="sr-only">操作球団</legend>
                   <div className="leagues">
                     {leagues.map((league) => (
@@ -152,7 +223,7 @@ export function App() {
                                   name="team"
                                   value={team.id}
                                   checked={selected === team.id}
-                                  onChange={() => setSelected(team.id)}
+                                  onChange={() => void chooseTeam(team.id)}
                                 />
                                 <span
                                   className="color-bar"
@@ -166,6 +237,7 @@ export function App() {
                     ))}
                   </div>
                 </fieldset>
+                {draft && <PlayerPreview key={draft.id} draft={draft} />}
                 <div className="selection-actions">
                   <p>
                     {selected
@@ -174,10 +246,10 @@ export function App() {
                   </p>
                   <button
                     className="primary"
-                    disabled={busy || !selected}
+                    disabled={busy || !selected || !draft}
                     onClick={() =>
                       perform(
-                        () => newSave(selected),
+                        () => newSave(selected, draft!.id),
                         "新しいセーブを作成しました。",
                       )
                     }
@@ -228,6 +300,8 @@ export function App() {
                         <p>
                           最終保存：
                           {dateFormat.format(new Date(save.updatedAt))}
+                          {save.schemaVersion === 1 &&
+                            " / 旧形式・読み込み時に移行"}
                         </p>
                       </div>
                       <button
@@ -253,10 +327,7 @@ export function App() {
                 <button
                   className="new-slot"
                   disabled={busy}
-                  onClick={() => {
-                    setCreating(true);
-                    setSelected("");
-                  }}
+                  onClick={() => void beginNewGame()}
                 >
                   ＋ 新しいスロットで始める
                 </button>
@@ -270,7 +341,7 @@ export function App() {
               <div>
                 <h2>ペナントの開幕に向けて</h2>
                 <p>
-                  選手・試合・日程・編成は今後追加します。現在は球団選択とセーブ機能を利用できます。
+                  選手データはセーブに保存されます。選手の詳細画面・試合・日程・編成は準備中です。
                 </p>
               </div>
             </aside>
