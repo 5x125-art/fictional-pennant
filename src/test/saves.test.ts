@@ -1,6 +1,7 @@
 import "fake-indexeddb/auto";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { getTeam, leagues, teams } from "../data/teams";
+import { readPublicRoster } from "../storage/playerViews";
 import { initializeSession } from "../storage/session";
 import * as generation from "../game/players/generate";
 import {
@@ -523,4 +524,34 @@ describe("破損・未対応スロットがある場合の起動", () => {
         expect(await readGameSave("healthy")).toEqual(healthyWorld);
     },
   );
+});
+
+it("公開選手の読み取りは保存済み状態を使い、再生成・日時更新・移行をしない", async () => {
+  const id = await start("yokohama");
+  const before = await readGameSave(id);
+  const spy = vi.spyOn(generation, "generateInitialPlayerWorld");
+  const view = await readPublicRoster(id);
+  expect(view.managedTeamId).toBe("yokohama");
+  expect(view.saveId).toBe(id);
+  expect(view.players).toHaveLength(912);
+  expect(view.players[0].abilities).toEqual(before.world.players[0].abilities);
+  expect(JSON.stringify(view)).not.toMatch(
+    /developmentByPlayerId|growthType|abilityCaps/,
+  );
+  expect(await readPublicRoster(id)).toEqual(view);
+  expect(await readGameSave(id)).toEqual(before);
+  expect(spy).not.toHaveBeenCalled();
+  await expect(readPublicRoster("missing")).rejects.toThrow();
+});
+
+it("スロットを切り替えても公開DTOに別スロットの選手を混ぜない", async () => {
+  const firstId = await start("yokohama");
+  const first = await readPublicRoster(firstId);
+  const secondId = await start("kobe");
+  const second = await readPublicRoster(secondId);
+  expect(first.players).not.toEqual(second.players);
+  await loadSave(firstId);
+  expect(await readPublicRoster(firstId)).toEqual(first);
+  await loadSave(secondId);
+  expect(await readPublicRoster(secondId)).toEqual(second);
 });

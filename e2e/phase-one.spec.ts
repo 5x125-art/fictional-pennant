@@ -47,7 +47,15 @@ test("球団選択・複数セーブ・手動保存・再読み込み・準備�
   await expect(
     page.getByRole("region", { name: "現在の操作球団" }),
   ).toContainText("横浜セイラーズ");
-  for (const tab of ["選手", "日程", "データ", "球団運営"]) {
+  await page
+    .getByRole("navigation")
+    .getByRole("button", { name: "選手", exact: true })
+    .click();
+  await expect(
+    page.getByRole("region", { name: "選手一覧", exact: true }),
+  ).toBeVisible();
+  await expect(page.locator(".player-list > li")).toHaveCount(76);
+  for (const tab of ["日程", "データ", "球団運営"]) {
     await page
       .getByRole("navigation")
       .getByRole("button", { name: tab, exact: true })
