@@ -76,8 +76,14 @@ export const estimatedPitchRanges: Readonly<
   strikeout: [3, 7],
   groundOut: [1, 6],
   flyOut: [1, 6],
+  groundDoublePlay: [1, 6],
+  sacrificeFly: [1, 6],
+  sacrificeBunt: [1, 6],
 };
 /** 異常な注入・極端な乱数列では勝敗を捏造せず例外で中断する安全弁。野球の打席上限ではない。 */
 export const simulationLimits = { plateAppearancesPerHalf: 200 } as const;
 /** 初期起用で「適性あり」とみなす暫定境界。0は拒否、1以上を許容。 */
 export const minimumStartingAptitude = 1;
+
+/** Phase 3B-1暫定：対象ゴロ／フライのうち成立する割合。犠打AIは未実装。 */
+export const runnerPlayConfig = { doublePlayGivenGroundOut: 0.35, sacrificeFlyGivenFlyOut: 0.65 } as const;

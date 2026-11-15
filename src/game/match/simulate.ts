@@ -11,7 +11,7 @@ import { matchBatter, matchPitcher, validateMatchInput } from "./validate";
 import {
   MatchSimulationError,
   MatchInputError,
-  outcomes,
+  playOutcomes,
   type Bases,
   type EndReason,
   type HalfInningResult,
@@ -136,7 +136,7 @@ export function simulateMatch(
       pitching[pitchers[loser].id].losses = 1;
     }
     return {
-      engineVersion: 1,
+      engineVersion: 2,
       status: "completed",
       awayTeamId: teams.away.teamId,
       homeTeamId: teams.home.teamId,
@@ -190,8 +190,8 @@ export function simulateMatch(
                 before,
               }),
             )
-          : drawPlateAppearance(batter, pitcher, random);
-        if (!outcomes.includes(drawn))
+          : drawPlateAppearance(batter, pitcher, random, before);
+        if (!playOutcomes.includes(drawn))
           throw new MatchSimulationError(
             "未対応の打席結果です。試合結果は確定していません。",
           );
@@ -199,14 +199,16 @@ export function simulateMatch(
           half === "bottom" && inning >= rules.regulationInnings
             ? score.away - score.home + 1
             : undefined;
-        const moved = advanceRunners(bases, batter.id, drawn, required);
+        const moved = advanceRunners(bases, batter.id, drawn, required, outs);
         const outcome = moved.outcome,
           runs = moved.scoredPlayerIds.length;
         const pitches = random.between(estimatedPitchRanges[drawn]);
         const bs = batting[batter.id],
           ps = pitching[pitcher.id];
         bs.plateAppearances++;
-        if (outcome !== "walk" && outcome !== "hitByPitch") bs.atBats++;
+        if (!["walk", "hitByPitch", "sacrificeFly", "sacrificeBunt"].includes(outcome)) bs.atBats++;
+        if (outcome === "sacrificeFly") bs.sacrificeFlies++;
+        if (outcome === "sacrificeBunt") bs.sacrificeBunts++;
         if (isHit(outcome)) {
           bs.hits++;
           ps.hitsAllowed++;
@@ -230,10 +232,8 @@ export function simulateMatch(
           bs.strikeouts++;
           ps.strikeouts++;
         }
-        if (moved.batterOut) {
-          outs++;
-          ps.outs++;
-        }
+        outs += moved.outsRecorded;
+        ps.outs += moved.outsRecorded;
         for (const id of moved.scoredPlayerIds) batting[id].runs++;
         bs.runsBattedIn += runs;
         ps.runsAllowed += runs;
@@ -260,6 +260,8 @@ export function simulateMatch(
           scoredPlayerIds: [...moved.scoredPlayerIds],
           runsBattedIn: runs,
           estimatedPitches: pitches,
+          outsRecorded: moved.outsRecorded,
+          movements: moved.movements,
         });
         if (
           half === "bottom" &&

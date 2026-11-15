@@ -15,14 +15,19 @@ it("全12球団・256シードの試合で集計整合と得点環境を確認�
     strikeouts = 0,
     pitches = 0,
     draws = 0,
-    extras = 0;
+    extras = 0,
+    doublePlays = 0,
+    sacrificeFlies = 0;
   const before = JSON.stringify(matchFixtureWorld);
   for (let seed = 0; seed < games; seed++) {
     const away = teams[seed % 12].id,
       home = teams[((seed % 12) + 1 + (Math.floor(seed / 12) % 11)) % 12].id;
     const input = matchFixture(seed, away, home),
       result = simulateMatch(input);
+    doublePlays += result.events.filter(e => e.outcome === "groundDoublePlay").length;
+    sacrificeFlies += result.events.filter(e => e.outcome === "sacrificeFly").length;
     assertMatchAccounting(result);
+    expect(result.events.some(e => e.outcome === "sacrificeBunt")).toBe(false);
     for (const stat of Object.values(result.battingByPlayerId)) {
       runs += stat.runs;
       hits += stat.hits;
@@ -56,13 +61,17 @@ it("全12球団・256シードの試合で集計整合と得点環境を確認�
     pitchesPerTeam: pitches / (games * 2),
     draws,
     extraInningGames: extras,
+    doublePlays,
+    sacrificeFlies,
   };
-  console.log("Phase 3A statistical sample", JSON.stringify(report));
+  console.log("Phase 3B-1 statistical sample", JSON.stringify(report));
   if (process.env.MATCH_STATISTICS_REPORT)
     writeFileSync(
       process.env.MATCH_STATISTICS_REPORT,
       JSON.stringify(report, null, 2) + "\n",
     );
+  expect(doublePlays).toBeGreaterThan(0);
+  expect(sacrificeFlies).toBeGreaterThan(0);
   expect(report.runsPerTeam).toBeGreaterThan(1);
   expect(report.runsPerTeam).toBeLessThan(10);
   expect(report.battingAverage).toBeGreaterThan(0.18);

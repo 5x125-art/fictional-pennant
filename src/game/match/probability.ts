@@ -1,9 +1,10 @@
 import type { PitchAbilities } from "../players/types";
 import { SeededRandom } from "../random/seededRandom";
-import { probabilityConfig as c } from "./config";
+import { probabilityConfig as c, runnerPlayConfig } from "./config";
 import {
-  outcomes,
+  playOutcomes,
   type MatchBatter,
+  type Situation,
   type MatchPitcher,
   type PlateAppearanceOutcome,
 } from "./types";
@@ -19,6 +20,7 @@ export function outcomeProbabilities(
   batter: MatchBatter,
   pitcher: MatchPitcher,
   pitch: PitchAbilities,
+  situation?: Pick<Situation, "outs" | "bases">,
 ): OutcomeProbabilities {
   const a = batter.abilities,
     p = pitcher.abilities;
@@ -78,7 +80,12 @@ export function outcomeProbabilities(
       c.groundShare.base + trajectory * c.groundShare.trajectory,
       c.groundShare,
     );
+  const dp = situation && situation.outs < 2 && situation.bases[0] !== null
+    ? groundOut * runnerPlayConfig.doublePlayGivenGroundOut : 0;
+  const sf = situation && situation.outs < 2 && situation.bases[2] !== null
+    ? (remaining - groundOut) * runnerPlayConfig.sacrificeFlyGivenFlyOut : 0;
   return {
+    groundDoublePlay: dp, sacrificeFly: sf, sacrificeBunt: 0,
     single,
     double,
     triple,
@@ -86,8 +93,8 @@ export function outcomeProbabilities(
     walk,
     hitByPitch,
     strikeout,
-    groundOut,
-    flyOut: remaining - groundOut,
+    groundOut: groundOut - dp,
+    flyOut: remaining - groundOut - sf,
   };
 }
 /** 各打席で所持球種を等確率選択。その球種別の球威・制球・変化量を反映。 */
@@ -95,15 +102,17 @@ export function drawPlateAppearance(
   batter: MatchBatter,
   pitcher: MatchPitcher,
   random: SeededRandom,
+  situation?: Pick<Situation, "outs" | "bases">,
 ): PlateAppearanceOutcome {
   const probabilities = outcomeProbabilities(
     batter,
     pitcher,
     random.pick(pitcher.abilities.pitches),
+    situation,
   );
   const roll = random.next();
   let cumulative = 0;
-  for (const outcome of outcomes) {
+  for (const outcome of playOutcomes) {
     cumulative += probabilities[outcome];
     if (roll < cumulative) return outcome;
   }
