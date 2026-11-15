@@ -1,10 +1,12 @@
-import type { Fielder, Pitcher } from "../players/types";
+import type { Fielder, Pitcher, FieldPosition } from "../players/types";
 import { SeededRandom } from "../random/seededRandom";
 import {
   estimatedPitchRanges,
   matchRules as rules,
   simulationLimits,
 } from "./config";
+import { defenseFielder, resolveDefense } from "./defense";
+import { EarnedRunReconstruction } from "./earnedRuns";
 import { drawPlateAppearance } from "./probability";
 import { advanceRunners, isHit } from "./runners";
 import { matchBatter, matchPitcher, validateMatchInput } from "./validate";
@@ -20,6 +22,9 @@ import {
   type MatchOptions,
   type MatchPitchingStats,
   type MatchResult,
+  type MatchFieldingStats,
+  type MatchTeamInput,
+  type DefenseFielder,
   type PlateAppearanceEvent,
   type Side,
   type Situation,
@@ -76,7 +81,8 @@ export function simulateMatch(
     typeof options !== "object" ||
     Array.isArray(options) ||
     (options.resolvePlateAppearance !== undefined &&
-      typeof options.resolvePlateAppearance !== "function")
+      typeof options.resolvePlateAppearance !== "function") ||
+    (options.resolveDefense !== undefined && typeof options.resolveDefense !== "function")
   )
     throw new MatchInputError("打席判定オプションが不正です。");
   const random = new SeededRandom(input.seed),
@@ -91,6 +97,18 @@ export function simulateMatch(
       matchBatter(index.get(e.playerId) as Fielder),
     ),
   };
+  const teamFielders = (team: MatchTeamInput) => {
+    const positions = new Map<FieldPosition, DefenseFielder>();
+    for (const entry of team.battingOrder) {
+      if (entry.position === "DH") continue;
+      positions.set(entry.position, defenseFielder(index.get(entry.playerId) as Fielder, entry.position));
+    }
+    return positions;
+  };
+  const fielders = { away: teamFielders(input.away), home: teamFielders(input.home) };
+  const fieldingStats: Record<string, Mutable<MatchFieldingStats>> = Object.create(null);
+  for (const side of ["away", "home"] as const) for (const f of fielders[side].values())
+    fieldingStats[f.id] = {chances: 0, hitsPrevented: 0, errors: 0, catchingErrors: 0, throwingErrors: 0};
   const pitchers = {
     away: matchPitcher(index.get(input.away.startingPitcherId) as Pitcher),
     home: matchPitcher(index.get(input.home.startingPitcherId) as Pitcher),
@@ -136,7 +154,7 @@ export function simulateMatch(
       pitching[pitchers[loser].id].losses = 1;
     }
     return {
-      engineVersion: 2,
+      engineVersion: 3,
       status: "completed",
       awayTeamId: teams.away.teamId,
       homeTeamId: teams.home.teamId,
@@ -148,6 +166,8 @@ export function simulateMatch(
       battingByPlayerId: batting,
       pitchingByPlayerId: pitching,
       events,
+      fieldingByPlayerId: fieldingStats,
+      earnedRunMethod: "reconstructedInningApproximation",
       finalState,
       random: { seed: input.seed, initialState, finalState: random.getState() },
     };
@@ -171,6 +191,7 @@ export function simulateMatch(
         outs = 0,
         appearances = 0;
       const startingRuns = score[side];
+      const reconstruction = new EarnedRunReconstruction();
       let walkOff = false;
       while (outs < rules.outsPerHalf) {
         if (appearances++ >= simulationLimits.plateAppearancesPerHalf)
@@ -191,7 +212,7 @@ export function simulateMatch(
               }),
             )
           : drawPlateAppearance(batter, pitcher, random, before);
-        if (!playOutcomes.includes(drawn))
+        if (!playOutcomes.includes(drawn) || drawn === "reachedOnError")
           throw new MatchSimulationError(
             "未対応の打席結果です。試合結果は確定していません。",
           );
@@ -199,7 +220,22 @@ export function simulateMatch(
           half === "bottom" && inning >= rules.regulationInnings
             ? score.away - score.home + 1
             : undefined;
-        const moved = advanceRunners(bases, batter.id, drawn, required, outs);
+        // 固定打席だけの注入は従来の規則テストを維持。守備テストは別途注入できる。
+        const defended = options.resolvePlateAppearance && !options.resolveDefense
+          ? {outcome: drawn, event: null}
+          : resolveDefense(drawn, fielders[fielding], random, events.length, options.resolveDefense);
+        if (defended.event) {
+          const ds = fieldingStats[defended.event.fielder.id];
+          ds.chances++;
+          ds.hitsPrevented += Number(defended.event.hitPrevented);
+          ds.errors += Number(defended.event.error);
+          ds.catchingErrors += Number(defended.event.errorKind === "catching");
+          ds.throwingErrors += Number(defended.event.errorKind === "throwing");
+        }
+        const moved = advanceRunners(bases, batter.id, defended.outcome, required, outs);
+        const rbi = defended.outcome === "reachedOnError" ? 0 : moved.scoredPlayerIds.length;
+        reconstruction.record(String(events.length), batter.id, moved,
+          defended.outcome === "reachedOnError" ? drawn : moved.outcome);
         const outcome = moved.outcome,
           runs = moved.scoredPlayerIds.length;
         const pitches = random.between(estimatedPitchRanges[drawn]);
@@ -235,9 +271,8 @@ export function simulateMatch(
         outs += moved.outsRecorded;
         ps.outs += moved.outsRecorded;
         for (const id of moved.scoredPlayerIds) batting[id].runs++;
-        bs.runsBattedIn += runs;
+        bs.runsBattedIn += rbi;
         ps.runsAllowed += runs;
-        ps.earnedRuns += runs;
         ps.pitches += pitches;
         score[side] += runs;
         frame[side] = (frame[side] ?? 0) + runs;
@@ -258,7 +293,8 @@ export function simulateMatch(
           before,
           after: finalState,
           scoredPlayerIds: [...moved.scoredPlayerIds],
-          runsBattedIn: runs,
+          runsBattedIn: rbi,
+          defense: defended.event,
           estimatedPitches: pitches,
           outsRecorded: moved.outsRecorded,
           movements: moved.movements,
@@ -272,6 +308,7 @@ export function simulateMatch(
           break;
         }
       }
+      pitching[pitchers[fielding].id].earnedRuns += reconstruction.earnedRuns;
       halves.push({
         inning,
         half,

@@ -1,0 +1,16 @@
+{
+  "low": {
+    "ability": 1,
+    "games": 256,
+    "hitsPrevented": 0,
+    "errors": 297,
+    "runsPerTeam": 3.45703125
+  },
+  "high": {
+    "ability": 100,
+    "games": 256,
+    "hitsPrevented": 185,
+    "errors": 12,
+    "runsPerTeam": 3.0234375
+  }
+}
