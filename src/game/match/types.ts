@@ -18,7 +18,7 @@ export const outcomes = [
   "groundOut",
   "flyOut",
 ] as const;
-export const playOutcomes = [...outcomes, "groundDoublePlay", "sacrificeFly", "sacrificeBunt"] as const;
+export const playOutcomes = [...outcomes, "groundDoublePlay", "sacrificeFly", "sacrificeBunt", "reachedOnError"] as const;
 export type PlateAppearanceOutcome = (typeof playOutcomes)[number];
 export interface RunnerMovement {
   readonly playerId: string;
@@ -89,6 +89,7 @@ export interface PlateAppearanceEvent {
   readonly estimatedPitches: number;
   readonly outsRecorded: number;
   readonly movements: readonly RunnerMovement[];
+  readonly defense: DefenseEvent | null;
 }
 export interface HalfInningResult {
   readonly inning: number;
@@ -107,13 +108,15 @@ export interface MatchBattingStats extends BattingStats {
   readonly singles: number;
 }
 export interface MatchPitchingStats extends PitchingStats {
+  /** 暫定の失策なし再構成値。正式裁定ではない（MatchResult.earnedRunMethod参照）。 */
+  readonly earnedRuns: number;
   readonly hitBatters: number;
   readonly pitches: number;
 }
 export type EndReason =
   "regulation" | "extraInnings" | "walkOff" | "twelveInningDraw";
 export interface MatchResult {
-  readonly engineVersion: 2;
+  readonly engineVersion: 3;
   readonly status: "completed";
   readonly awayTeamId: string;
   readonly homeTeamId: string;
@@ -126,6 +129,8 @@ export interface MatchResult {
   readonly battingByPlayerId: Readonly<Record<string, MatchBattingStats>>;
   readonly pitchingByPlayerId: Readonly<Record<string, MatchPitchingStats>>;
   readonly events: readonly PlateAppearanceEvent[];
+  readonly fieldingByPlayerId: Readonly<Record<string, MatchFieldingStats>>;
+  readonly earnedRunMethod: "reconstructedInningApproximation";
   readonly finalState: Situation;
   readonly random: {
     readonly seed: number;
@@ -133,7 +138,37 @@ export interface MatchResult {
     readonly finalState: number;
   };
 }
+export interface DefenseFielder {
+  readonly id: string;
+  readonly position: FieldPosition;
+  readonly catching: number;
+  readonly throwing: number;
+  readonly aptitude: number;
+}
+export type DefenseAction = "none" | "hitPrevented" | "catchingError" | "throwingError";
+export interface DefenseContext {
+  readonly eventIndex: number;
+  readonly battedBall: "ground" | "fly";
+  readonly drawnOutcome: PlateAppearanceOutcome;
+  readonly fielder: DefenseFielder;
+}
+export interface DefenseEvent extends DefenseContext {
+  readonly hitPrevented: boolean;
+  readonly error: boolean;
+  readonly errorKind: "catching" | "throwing" | null;
+  readonly errorPlayerId: string | null;
+}
+export interface MatchFieldingStats {
+  readonly chances: number;
+  readonly hitsPrevented: number;
+  readonly errors: number;
+  readonly catchingErrors: number;
+  readonly throwingErrors: number;
+}
 export interface MatchOptions {
+  /** 守備対象打球だけで呼ぶ決定的テスト注入。打席注入のみの場合は守備抽選しない。 */
+  readonly resolveDefense?: (context: DefenseContext) => DefenseAction;
+
   /** 規則の検証用。未指定なら能力・試合専用PRNGで抽選。 */
   readonly resolvePlateAppearance?: (
     context: PlateAppearanceContext,

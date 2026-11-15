@@ -54,7 +54,7 @@ function advanceBasicRunners(
       bases[2],
     ],
     scored: string[] = [];
-  if (drawnOutcome === "walk" || drawnOutcome === "hitByPitch") {
+  if (drawnOutcome === "walk" || drawnOutcome === "hitByPitch" || drawnOutcome === "reachedOnError") {
     if (bases[0]) {
       if (bases[1]) {
         if (bases[2]) scored.push(bases[2]);

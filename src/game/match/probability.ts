@@ -85,7 +85,7 @@ export function outcomeProbabilities(
   const sf = situation && situation.outs < 2 && situation.bases[2] !== null
     ? (remaining - groundOut) * runnerPlayConfig.sacrificeFlyGivenFlyOut : 0;
   return {
-    groundDoublePlay: dp, sacrificeFly: sf, sacrificeBunt: 0,
+    reachedOnError: 0, groundDoublePlay: dp, sacrificeFly: sf, sacrificeBunt: 0,
     single,
     double,
     triple,
