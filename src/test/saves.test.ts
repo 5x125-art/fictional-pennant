@@ -1,3 +1,5 @@
+import { simulateMatch } from "../game/match/simulate";
+import { fixtureTeam } from "./helpers/matchFixture";
 import * as rosters from "../game/roster/roster";
 import "fake-indexeddb/auto";
 import {
@@ -770,4 +772,21 @@ it("v1/v2/v3の混在一覧は本体を読まず勝手に移行しない", async
   ).toBe(true);
   requests.mockRestore();
   expect(await raw("worlds", old.id)).toEqual(before);
+});
+
+it("単体試合の計算でv3保存・選手・今季履歴・相対日・正式PRNGを変更しない", async () => {
+  const id = await start("sapporo"),
+    before = await readGameSave(id);
+  const input = {
+    seed: 4129,
+    players: before.world.players,
+    roster: before.world.roster,
+    away: fixtureTeam("sapporo", before.world.players, before.world.roster),
+    home: fixtureTeam("niigata", before.world.players, before.world.roster),
+  };
+  const result = simulateMatch(input);
+  expect(result.status).toBe("completed");
+  expect(result.events.length).toBeGreaterThan(0);
+  expect(await readGameSave(id)).toEqual(before);
+  expect(before.schemaVersion).toBe(3);
 });

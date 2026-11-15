@@ -1,0 +1,290 @@
+import type { Fielder, Pitcher } from "../players/types";
+import { SeededRandom } from "../random/seededRandom";
+import {
+  estimatedPitchRanges,
+  matchRules as rules,
+  simulationLimits,
+} from "./config";
+import { drawPlateAppearance } from "./probability";
+import { advanceRunners, isHit } from "./runners";
+import { matchBatter, matchPitcher, validateMatchInput } from "./validate";
+import {
+  MatchSimulationError,
+  MatchInputError,
+  outcomes,
+  type Bases,
+  type EndReason,
+  type HalfInningResult,
+  type MatchBattingStats,
+  type MatchInput,
+  type MatchOptions,
+  type MatchPitchingStats,
+  type MatchResult,
+  type PlateAppearanceEvent,
+  type Side,
+  type Situation,
+} from "./types";
+type Mutable<T> = { -readonly [K in keyof T]: T[K] };
+function emptyBatting(): Mutable<MatchBattingStats> {
+  return {
+    games: 1,
+    plateAppearances: 0,
+    atBats: 0,
+    hits: 0,
+    singles: 0,
+    doubles: 0,
+    triples: 0,
+    homeRuns: 0,
+    walks: 0,
+    hitByPitches: 0,
+    sacrificeBunts: 0,
+    sacrificeFlies: 0,
+    strikeouts: 0,
+    runs: 0,
+    runsBattedIn: 0,
+    stolenBases: 0,
+    caughtStealing: 0,
+  };
+}
+function emptyPitching(): Mutable<MatchPitchingStats> {
+  return {
+    games: 1,
+    starts: 1,
+    outs: 0,
+    hitsAllowed: 0,
+    homeRunsAllowed: 0,
+    walks: 0,
+    strikeouts: 0,
+    runsAllowed: 0,
+    earnedRuns: 0,
+    wins: 0,
+    losses: 0,
+    saves: 0,
+    holds: 0,
+    hitBatters: 0,
+    pitches: 0,
+  };
+}
+/** 1試合のローカル計算のみ。入力・セーブ・日付には書き込まない。 */
+export function simulateMatch(
+  input: MatchInput,
+  options: MatchOptions = {},
+): MatchResult {
+  validateMatchInput(input);
+  if (
+    !options ||
+    typeof options !== "object" ||
+    Array.isArray(options) ||
+    (options.resolvePlateAppearance !== undefined &&
+      typeof options.resolvePlateAppearance !== "function")
+  )
+    throw new MatchInputError("打席判定オプションが不正です。");
+  const random = new SeededRandom(input.seed),
+    initialState = random.getState();
+  const teams = { away: input.away, home: input.home };
+  const index = new Map(input.players.map((p) => [p.id, p]));
+  const batters = {
+    away: input.away.battingOrder.map((e) =>
+      matchBatter(index.get(e.playerId) as Fielder),
+    ),
+    home: input.home.battingOrder.map((e) =>
+      matchBatter(index.get(e.playerId) as Fielder),
+    ),
+  };
+  const pitchers = {
+    away: matchPitcher(index.get(input.away.startingPitcherId) as Pitcher),
+    home: matchPitcher(index.get(input.home.startingPitcherId) as Pitcher),
+  };
+  const batting: Record<string, Mutable<MatchBattingStats>> = Object.create(
+      null,
+    ),
+    pitching: Record<string, Mutable<MatchPitchingStats>> = Object.create(null);
+  for (const side of ["away", "home"] as const) {
+    for (const b of batters[side]) batting[b.id] = emptyBatting();
+    pitching[pitchers[side].id] = emptyPitching();
+  }
+  const score = { away: 0, home: 0 },
+    next = { away: 0, home: 0 };
+  const innings: { inning: number; away: number; home: number | null }[] = [],
+    halves: HalfInningResult[] = [],
+    events: PlateAppearanceEvent[] = [];
+  let finalState: Situation;
+  const snapshot = (
+    inning: number,
+    half: "top" | "bottom",
+    outs: number,
+    bases: Bases,
+  ): Situation =>
+    Object.freeze({
+      inning,
+      half,
+      outs,
+      bases: Object.freeze([...bases]) as Bases,
+      score: Object.freeze({ ...score }),
+      nextBatterIndex: Object.freeze({ ...next }),
+    });
+  const finish = (endReason: EndReason): MatchResult => {
+    const winner: Side | null =
+      score.away === score.home
+        ? null
+        : score.away > score.home
+          ? "away"
+          : "home";
+    if (winner) {
+      const loser = winner === "away" ? "home" : "away";
+      pitching[pitchers[winner].id].wins = 1;
+      pitching[pitchers[loser].id].losses = 1;
+    }
+    return {
+      engineVersion: 1,
+      status: "completed",
+      awayTeamId: teams.away.teamId,
+      homeTeamId: teams.home.teamId,
+      winnerTeamId: winner ? teams[winner].teamId : null,
+      endReason,
+      score: { ...score },
+      innings,
+      halfInnings: halves,
+      battingByPlayerId: batting,
+      pitchingByPlayerId: pitching,
+      events,
+      finalState,
+      random: { seed: input.seed, initialState, finalState: random.getState() },
+    };
+  };
+  for (let inning = 1; inning <= rules.maxInnings; inning++) {
+    const frame = { inning, away: 0, home: null as number | null };
+    innings.push(frame);
+    for (const half of ["top", "bottom"] as const) {
+      if (
+        half === "bottom" &&
+        inning >= rules.regulationInnings &&
+        score.home > score.away
+      )
+        return finish(
+          inning === rules.regulationInnings ? "regulation" : "extraInnings",
+        );
+      const side: Side = half === "top" ? "away" : "home",
+        fielding: Side = side === "away" ? "home" : "away";
+      if (half === "bottom") frame.home = 0;
+      let bases: Bases = [null, null, null],
+        outs = 0,
+        appearances = 0;
+      const startingRuns = score[side];
+      let walkOff = false;
+      while (outs < rules.outsPerHalf) {
+        if (appearances++ >= simulationLimits.plateAppearancesPerHalf)
+          throw new MatchSimulationError(
+            "半イニングの計算打席数が安全上限を超えました。試合結果は確定していません。",
+          );
+        const batter = batters[side][next[side]],
+          pitcher = pitchers[fielding];
+        const before = snapshot(inning, half, outs, bases);
+        const drawn = options.resolvePlateAppearance
+          ? options.resolvePlateAppearance(
+              Object.freeze({
+                eventIndex: events.length,
+                battingOrderSlot: next[side] + 1,
+                batter,
+                pitcher,
+                before,
+              }),
+            )
+          : drawPlateAppearance(batter, pitcher, random);
+        if (!outcomes.includes(drawn))
+          throw new MatchSimulationError(
+            "未対応の打席結果です。試合結果は確定していません。",
+          );
+        const required =
+          half === "bottom" && inning >= rules.regulationInnings
+            ? score.away - score.home + 1
+            : undefined;
+        const moved = advanceRunners(bases, batter.id, drawn, required);
+        const outcome = moved.outcome,
+          runs = moved.scoredPlayerIds.length;
+        const pitches = random.between(estimatedPitchRanges[drawn]);
+        const bs = batting[batter.id],
+          ps = pitching[pitcher.id];
+        bs.plateAppearances++;
+        if (outcome !== "walk" && outcome !== "hitByPitch") bs.atBats++;
+        if (isHit(outcome)) {
+          bs.hits++;
+          ps.hitsAllowed++;
+          if (outcome === "single") bs.singles++;
+          if (outcome === "double") bs.doubles++;
+          if (outcome === "triple") bs.triples++;
+          if (outcome === "homeRun") {
+            bs.homeRuns++;
+            ps.homeRunsAllowed++;
+          }
+        }
+        if (outcome === "walk") {
+          bs.walks++;
+          ps.walks++;
+        }
+        if (outcome === "hitByPitch") {
+          bs.hitByPitches++;
+          ps.hitBatters++;
+        }
+        if (outcome === "strikeout") {
+          bs.strikeouts++;
+          ps.strikeouts++;
+        }
+        if (moved.batterOut) {
+          outs++;
+          ps.outs++;
+        }
+        for (const id of moved.scoredPlayerIds) batting[id].runs++;
+        bs.runsBattedIn += runs;
+        ps.runsAllowed += runs;
+        ps.earnedRuns += runs;
+        ps.pitches += pitches;
+        score[side] += runs;
+        frame[side] = (frame[side] ?? 0) + runs;
+        bases = moved.bases;
+        next[side] = (next[side] + 1) % rules.batters;
+        finalState = snapshot(inning, half, outs, bases);
+        events.push({
+          index: events.length,
+          inning,
+          half,
+          battingTeamId: teams[side].teamId,
+          fieldingTeamId: teams[fielding].teamId,
+          battingOrderSlot: before.nextBatterIndex[side] + 1,
+          batterId: batter.id,
+          pitcherId: pitcher.id,
+          drawnOutcome: drawn,
+          outcome,
+          before,
+          after: finalState,
+          scoredPlayerIds: [...moved.scoredPlayerIds],
+          runsBattedIn: runs,
+          estimatedPitches: pitches,
+        });
+        if (
+          half === "bottom" &&
+          inning >= rules.regulationInnings &&
+          score.home > score.away
+        ) {
+          walkOff = true;
+          break;
+        }
+      }
+      halves.push({
+        inning,
+        half,
+        runs: score[side] - startingRuns,
+        outs,
+        leftOnBaseIds: bases.filter((id): id is string => id !== null),
+        endedBy: walkOff ? "walkOff" : "threeOuts",
+      });
+      if (walkOff) return finish("walkOff");
+    }
+    if (inning >= rules.regulationInnings && score.away !== score.home)
+      return finish(
+        inning === rules.regulationInnings ? "regulation" : "extraInnings",
+      );
+    if (inning === rules.maxInnings) return finish("twelveInningDraw");
+  }
+  throw new MatchSimulationError("試合の終了条件に到達できませんでした。");
+}
