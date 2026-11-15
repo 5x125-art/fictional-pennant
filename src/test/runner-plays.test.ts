@@ -12,7 +12,7 @@ describe("Phase 3B-1走者プレー", () => {
   it("全塁状態・アウト・結果で成立条件と走者保存を検証", () => {
     for (let mask = 0; mask < 8; mask++) for (let outs = 0; outs < 3; outs++) for (const outcome of special) {
       const bases: Bases = [mask & 1 ? "a" : null, mask & 2 ? "b" : null, mask & 4 ? "c" : null];
-      const legal = outs < 2 && (outcome === "groundDoublePlay" ? !!bases[0] : outcome === "sacrificeFly" ? !!bases[2] : mask !== 0);
+      const legal = outs < 2 && (outcome === "groundDoublePlay" ? !!bases[0] : outcome === "sacrificeFly" ? !!bases[2] : mask !== 0 && bases[2] === null);
       const run = () => advanceRunners(bases, "d", outcome, undefined, outs);
       if (!legal) { expect(run).toThrow(); continue; }
       const moved = run();
@@ -48,19 +48,49 @@ describe("Phase 3B-1走者プレー", () => {
     expect(result.innings[0].away).toBe(1);
     assertMatchAccounting(result);
   });
-  it.each(["sacrificeFly", "sacrificeBunt"] as const)("%sは打数を増やさず得点・打点と投手アウトを記録", outcome => {
+  it("犠飛は打数を増やさず得点・打点と投手アウトを記録", () => {
+    const outcome = "sacrificeFly" as const;
     const result = game({"1-top": ["triple", outcome]});
     const e = result.events[1];
     const stats = result.battingByPlayerId[e.batterId];
     const logs = result.events.filter(log => log.batterId === e.batterId);
     expect(stats.atBats).toBe(logs.length - 1);
-    expect(stats[outcome === "sacrificeFly" ? "sacrificeFlies" : "sacrificeBunts"]).toBe(1);
+    expect(stats.sacrificeFlies).toBe(1);
     expect(e).toMatchObject({outsRecorded: 1, runsBattedIn: 1, after: {outs: 1}});
     expect(result.battingByPlayerId[e.scoredPlayerIds[0]].runs).toBe(1);
     assertMatchAccounting(result);
   });
-  it("犠打は満塁の各走者を1塁進める", () => {
-    expect(advanceRunners(["a", "b", "c"], "d", "sacrificeBunt")).toMatchObject({bases: [null, "a", "b"], scoredPlayerIds: ["c"], outsRecorded: 1});
+  it.each([0, 1])("%iアウトで三塁が空の送りバントは打数を増やさず進塁・犠打・投手アウトを記録", outs => {
+    const script = ["single", "single", ...Array<"strikeout">(outs).fill("strikeout"), "sacrificeBunt"] as const;
+    const result = game({"1-top": [...script]});
+    const event = result.events[script.length - 1];
+    const [first, second] = event.before.bases;
+    expect(event).toMatchObject({
+      outcome: "sacrificeBunt", outsRecorded: 1, scoredPlayerIds: [], runsBattedIn: 0,
+      after: {outs: outs + 1, bases: [null, first, second]},
+    });
+    expect(event.movements).toEqual([
+      {playerId: first, from: 1, to: 2},
+      {playerId: second, from: 2, to: 3},
+      {playerId: event.batterId, from: 0, to: "out", outKind: "batter"},
+    ]);
+    const stats = result.battingByPlayerId[event.batterId];
+    const logs = result.events.filter(e => e.batterId === event.batterId);
+    expect(stats).toMatchObject({plateAppearances: logs.length, atBats: logs.length - 1, sacrificeBunts: 1, runsBattedIn: 0});
+    expect(result.pitchingByPlayerId[event.pitcherId].outs).toBe(
+      result.events.filter(e => e.pitcherId === event.pitcherId).reduce((n,e) => n + e.outsRecorded, 0),
+    );
+    expect(result.score.away).toBe(0);
+    assertMatchAccounting(result);
+  });
+  it.each([0, 1])("%iアウトで三塁走者がいる全塁状態の犠打を明示的に拒否", outs => {
+    for (const bases of [[null, null, "c"], ["a", null, "c"], [null, "b", "c"], ["a", "b", "c"]] as const) {
+      const before = [...bases];
+      expect(() => advanceRunners(bases, "d", "sacrificeBunt", undefined, outs)).toThrow(/スクイズは未実装/);
+      expect(bases).toEqual(before);
+    }
+    expect(() => game({"1-top": ["triple", ...Array<"strikeout">(outs).fill("strikeout"), "sacrificeBunt"]})).toThrow(/スクイズは未実装/);
+    expect(() => game({"1-top": ["walk", "walk", "walk", ...Array<"strikeout">(outs).fill("strikeout"), "sacrificeBunt"]})).toThrow(/スクイズは未実装/);
   });
   it.each([9, 10, 12])("%i回裏の犠飛サヨナラで即時終了", inning => {
     const result = game({[`${inning}-bottom`]: ["triple", "sacrificeFly", "homeRun"]});

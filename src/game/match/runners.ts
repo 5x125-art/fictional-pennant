@@ -110,6 +110,8 @@ export function advanceRunners(
   // 共通の入力・ID重複検証。新プレーも通常アウトとして検証してから処理する。
   const special = ["groundDoublePlay", "sacrificeFly", "sacrificeBunt"].includes(drawnOutcome);
   let moved = advanceBasicRunners(bases, batterId, special ? "groundOut" : drawnOutcome, runsToWin);
+  if (drawnOutcome === "sacrificeBunt" && bases[2] !== null)
+    throw new MatchSimulationError("未対応の成立条件です（三塁走者のいる犠打・スクイズは未実装）。");
   let runnerOut: string | null = null;
   if (special) {
     const legal = outsBefore < 2 && (
@@ -127,10 +129,9 @@ export function advanceRunners(
       next[2] = null;
     } else {
       next.fill(null);
-      for (let i = 2; i >= 0; i--) {
+      for (let i = 1; i >= 0; i--) {
         if (!bases[i]) continue;
-        if (i === 2) scored.push(bases[i]!);
-        else next[i + 1] = bases[i];
+        next[i + 1] = bases[i];
       }
     }
     moved = { outcome: drawnOutcome, bases: next, scoredPlayerIds: scored, batterOut: true };
