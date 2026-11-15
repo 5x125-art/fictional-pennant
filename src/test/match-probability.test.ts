@@ -7,6 +7,7 @@ import { SeededRandom } from "../game/random/seededRandom";
 import { estimatedPitchRanges, probabilityConfig } from "../game/match/config";
 import {
   outcomes,
+  playOutcomes,
   type MatchBatter,
   type MatchPitcher,
 } from "../game/match/types";
@@ -187,8 +188,8 @@ describe("暫定確率モデル", () => {
   });
   it("多数の独立試行が設定した確率に近づく", () => {
     const random = new SeededRandom(78421),
-      counts = Object.fromEntries(outcomes.map((o) => [o, 0])) as Record<
-        (typeof outcomes)[number],
+      counts = Object.fromEntries(playOutcomes.map((o) => [o, 0])) as Record<
+        (typeof playOutcomes)[number],
         number
       >;
     const n = 50_000;
@@ -201,4 +202,17 @@ describe("暫定確率モデル", () => {
       );
     expect(probabilityConfig.hit.base).toBeGreaterThan(0);
   });
+});
+
+it("併殺・犠飛は対象塁と0〜1アウトだけで確率を移し、犠打を自動抽選しない", () => {
+  for (let mask = 0; mask < 8; mask++) for (let outs = 0; outs < 3; outs++) {
+    const bases = [mask & 1 ? "a" : null, mask & 2 ? "b" : null, mask & 4 ? "c" : null] as const;
+    const p = outcomeProbabilities(batter, pitcher, pitch, {outs, bases});
+    expect(p.groundDoublePlay > 0).toBe(outs < 2 && !!bases[0]);
+    expect(p.sacrificeFly > 0).toBe(outs < 2 && !!bases[2]);
+    expect(p.sacrificeBunt).toBe(0);
+    expect(Object.values(p).reduce((a,b) => a+b,0)).toBeCloseTo(1, 12);
+    expect(p.groundOut + p.groundDoublePlay).toBeCloseTo(probabilities().groundOut, 12);
+    expect(p.flyOut + p.sacrificeFly).toBeCloseTo(probabilities().flyOut, 12);
+  }
 });

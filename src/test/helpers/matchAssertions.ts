@@ -1,5 +1,4 @@
 import { expect } from "vitest";
-import { isOut } from "../../game/match/runners";
 import type { MatchResult } from "../../game/match/types";
 const sum = (values: readonly number[]) => values.reduce((a, b) => a + b, 0);
 export function assertMatchAccounting(result: MatchResult) {
@@ -22,14 +21,14 @@ export function assertMatchAccounting(result: MatchResult) {
     expect(sum(stats.map((s) => s.plateAppearances))).toBe(logs.length);
     for (const s of stats) {
       expect(s.hits).toBe(s.singles + s.doubles + s.triples + s.homeRuns);
-      expect(s.plateAppearances).toBe(s.atBats + s.walks + s.hitByPitches);
+      expect(s.plateAppearances).toBe(s.atBats + s.walks + s.hitByPitches + s.sacrificeBunts + s.sacrificeFlies);
       expect(s.strikeouts + s.hits).toBeLessThanOrEqual(s.atBats);
       expect(
-        s.sacrificeBunts + s.sacrificeFlies + s.stolenBases + s.caughtStealing,
+        s.stolenBases + s.caughtStealing,
       ).toBe(0);
     }
     const pitcher = result.pitchingByPlayerId[logs[0].pitcherId];
-    expect(pitcher.outs).toBe(logs.filter((e) => isOut(e.outcome)).length);
+    expect(pitcher.outs).toBe(sum(logs.map(e => e.outsRecorded)));
     expect(pitcher.outs).toBe(
       sum(
         result.halfInnings
@@ -52,13 +51,16 @@ export function assertMatchAccounting(result: MatchResult) {
     const completed = [
       ...after,
       ...event.scoredPlayerIds,
-      ...(isOut(event.outcome) ? [event.batterId] : []),
+      ...event.movements.filter(m => m.to === "out").map(m => m.playerId),
     ];
     expect(new Set(completed).size).toBe(completed.length);
     expect([...completed].sort()).toEqual([...before, event.batterId].sort());
     expect(event.after.outs - event.before.outs).toBe(
-      isOut(event.outcome) ? 1 : 0,
+      event.outsRecorded,
     );
+    expect(event.movements.filter(m => m.to === "out")).toHaveLength(event.outsRecorded);
+    expect(event.after.outs).toBeLessThanOrEqual(3);
+    if (event.after.outs === 3) expect(event.scoredPlayerIds).toEqual([]);
     expect(event.runsBattedIn).toBe(event.scoredPlayerIds.length);
     const side = event.half === "top" ? "away" : "home";
     expect(event.after.score[side] - event.before.score[side]).toBe(

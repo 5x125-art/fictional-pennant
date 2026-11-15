@@ -18,7 +18,14 @@ export const outcomes = [
   "groundOut",
   "flyOut",
 ] as const;
-export type PlateAppearanceOutcome = (typeof outcomes)[number];
+export const playOutcomes = [...outcomes, "groundDoublePlay", "sacrificeFly", "sacrificeBunt"] as const;
+export type PlateAppearanceOutcome = (typeof playOutcomes)[number];
+export interface RunnerMovement {
+  readonly playerId: string;
+  readonly from: 0 | 1 | 2 | 3;
+  readonly to: 1 | 2 | 3 | "score" | "out";
+  readonly outKind?: "batter" | "force";
+}
 export type Side = "away" | "home";
 export type Half = "top" | "bottom";
 export type Bases = readonly [string | null, string | null, string | null];
@@ -80,6 +87,8 @@ export interface PlateAppearanceEvent {
   readonly scoredPlayerIds: readonly string[];
   readonly runsBattedIn: number;
   readonly estimatedPitches: number;
+  readonly outsRecorded: number;
+  readonly movements: readonly RunnerMovement[];
 }
 export interface HalfInningResult {
   readonly inning: number;
@@ -104,7 +113,7 @@ export interface MatchPitchingStats extends PitchingStats {
 export type EndReason =
   "regulation" | "extraInnings" | "walkOff" | "twelveInningDraw";
 export interface MatchResult {
-  readonly engineVersion: 1;
+  readonly engineVersion: 2;
   readonly status: "completed";
   readonly awayTeamId: string;
   readonly homeTeamId: string;
