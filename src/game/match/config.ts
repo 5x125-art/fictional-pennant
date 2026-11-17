@@ -99,3 +99,14 @@ export const defenseConfig = {
   throwingError: { base: 0.009, throwing: -0.00010, aptitude: -0.00008, min: 0.001, max: 0.035 },
   center: 50,
 } as const;
+
+/** Phase 3B-3A暫定。安打阻止・失策とは別の走塁判断／外野送球係数。 */
+export const baserunningConfig = {
+  center: 50,
+  outfieldPositions: ["LF", "CF", "CF", "RF"],
+  singleGroundShare: 0.55,
+  attempt: { singleToThird: 0.30, singleToHome: 0.52, doubleToHome: 0.48,
+    speed: 0.004, arm: -0.001, twoOuts: 0.12, ground: 0.04, min: 0.03, max: 0.92 },
+  out: { base: 0.12, speed: -0.0015, arm: 0.002, throwing: 0.0006,
+    aptitude: 0.0004, home: 0.035, twoOuts: -0.02, ground: -0.02, min: 0.015, max: 0.45 },
+} as const;

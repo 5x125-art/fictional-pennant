@@ -1,3 +1,4 @@
+import { advanceOnHit } from "./baserunning";
 import { advanceRunners, type PlayTransition } from "./runners";
 import type { Bases, PlateAppearanceOutcome } from "./types";
 
@@ -12,6 +13,7 @@ export class EarnedRunReconstruction {
   record(token: string, batterId: string, play: PlayTransition, errorFreeOutcome: PlateAppearanceOutcome) {
     // 選手IDではなく打席ごとのトークンを使い、打者一巡後の別出塁を区別する。
     this.actualRunners.set(batterId, token);
+    const runnerTokens = new Map(this.actualRunners);
     for (const id of play.scoredPlayerIds) this.actualScored.add(this.actualRunners.get(id)!);
     for (const movement of play.movements)
       if (movement.to === "out" || movement.to === "score") this.actualRunners.delete(movement.playerId);
@@ -20,7 +22,14 @@ export class EarnedRunReconstruction {
     if (outcome === "groundDoublePlay" && (this.outs >= 2 || !this.bases[0])) outcome = "groundOut";
     if (outcome === "sacrificeFly" && (this.outs >= 2 || !this.bases[2])) outcome = "flyOut";
     if (outcome === "sacrificeBunt" && (this.outs >= 2 || this.bases[2] || !this.bases.some(Boolean))) outcome = "groundOut";
-    const shadow = advanceRunners(this.bases, token, outcome, undefined, this.outs);
+    const replay = new Map(play.movements.filter(m => m.extraAdvance).map(m => [runnerTokens.get(m.playerId), m.extraAdvance!]));
+    const shadow = outcome === "single" || outcome === "double"
+      ? advanceOnHit(this.bases, token, outcome, this.outs, undefined, (runnerToken, from, target) => {
+          const extra = replay.get(runnerToken);
+          // 失策なし状態でも同じ出発塁・目標で成立するときだけ、乱数を再抽選せず再適用。
+          return extra?.from === from && extra.target === target ? extra : undefined;
+        })
+      : advanceRunners(this.bases, token, outcome, undefined, this.outs);
     this.bases = shadow.bases;
     this.outs += shadow.outsRecorded;
     for (const id of shadow.scoredPlayerIds) this.shadowScored.add(id);

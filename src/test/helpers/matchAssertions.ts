@@ -70,7 +70,18 @@ export function assertMatchAccounting(result: MatchResult) {
     );
     expect(event.movements.filter(m => m.to === "out")).toHaveLength(event.outsRecorded);
     expect(event.after.outs).toBeLessThanOrEqual(3);
-    if (event.after.outs === 3) expect(event.scoredPlayerIds).toEqual([]);
+    if (event.after.outs === 3) {
+      const third = event.playSequence.filter(m => m.type === "out")[2-event.before.outs];
+      if (third.outKind !== "tag") expect(event.scoredPlayerIds).toEqual([]);
+    }
+    let outs = event.before.outs;
+    const validScores: string[] = [];
+    for (const moment of event.playSequence) {
+      if (outs === 3) break;
+      if (moment.type === "score") validScores.push(moment.playerId);
+      else if (++outs === 3 && moment.outKind !== "tag") validScores.length = 0;
+    }
+    expect(event.scoredPlayerIds).toEqual(validScores);
     expect(event.runsBattedIn).toBe(event.outcome === "reachedOnError" ? 0 : event.scoredPlayerIds.length);
     const side = event.half === "top" ? "away" : "home";
     expect(event.after.score[side] - event.before.score[side]).toBe(

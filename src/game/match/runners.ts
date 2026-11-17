@@ -2,6 +2,7 @@ import {
   playOutcomes,
   MatchSimulationError,
   type Bases,
+  type PlayMoment,
   type RunnerMovement,
   type PlateAppearanceOutcome,
 } from "./types";
@@ -99,6 +100,7 @@ function advanceBasicRunners(
 export interface PlayTransition extends RunnerTransition {
   readonly outsRecorded: number;
   readonly movements: readonly RunnerMovement[];
+  readonly playSequence: readonly PlayMoment[];
 }
 /** 同一プレーの全走者を一度ずつ処理する。第3アウトがフォース／打者アウトなら得点なし。 */
 export function advanceRunners(
@@ -146,5 +148,22 @@ export function advanceRunners(
     else if (moved.scoredPlayerIds.includes(id)) movements.push({ playerId: id, from, to: "score" });
     else movements.push({ playerId: id, from, to: (moved.bases.indexOf(id) + 1) as 1 | 2 | 3 });
   }
-  return { ...moved, outsRecorded: movements.filter(m => m.to === "out").length, movements };
+  const playSequence: PlayMoment[] = [
+    ...movements.filter(m => m.to === "out").map(m => ({playerId: m.playerId, type: "out" as const, outKind: m.outKind})),
+    ...moved.scoredPlayerIds.map(playerId => ({playerId, type: "score" as const})),
+  ];
+  return { ...moved, scoredPlayerIds: scoredBeforeThirdOut(playSequence, outsBefore),
+    outsRecorded: movements.filter(m => m.to === "out").length, movements, playSequence };
+}
+
+/** タイムプレー裁定。得点は第3アウトより前のみ。フォース等なら先行得点も無効。 */
+export function scoredBeforeThirdOut(sequence: readonly PlayMoment[], outsBefore: number): string[] {
+  const scored: string[] = [];
+  let outs = outsBefore;
+  for (const moment of sequence) {
+    if (outs >= 3) break;
+    if (moment.type === "score") scored.push(moment.playerId);
+    else if (++outs === 3 && moment.outKind !== "tag") return [];
+  }
+  return scored;
 }

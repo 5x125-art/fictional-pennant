@@ -24,7 +24,11 @@ export interface RunnerMovement {
   readonly playerId: string;
   readonly from: 0 | 1 | 2 | 3;
   readonly to: 1 | 2 | 3 | "score" | "out";
-  readonly outKind?: "batter" | "force";
+  readonly outKind?: "batter" | "force" | "tag";
+  readonly extraAdvance?: ExtraAdvanceEvent;
+  readonly extraAdvanceTarget?: 3 | "score";
+  readonly extraAdvanceAttempted?: boolean;
+  readonly advanceBlocked?: "occupied" | "thirdOut" | "walkOff";
 }
 export type Side = "away" | "home";
 export type Half = "top" | "bottom";
@@ -90,6 +94,7 @@ export interface PlateAppearanceEvent {
   readonly outsRecorded: number;
   readonly movements: readonly RunnerMovement[];
   readonly defense: DefenseEvent | null;
+  readonly playSequence: readonly PlayMoment[];
 }
 export interface HalfInningResult {
   readonly inning: number;
@@ -116,7 +121,7 @@ export interface MatchPitchingStats extends PitchingStats {
 export type EndReason =
   "regulation" | "extraInnings" | "walkOff" | "twelveInningDraw";
 export interface MatchResult {
-  readonly engineVersion: 3;
+  readonly engineVersion: 4;
   readonly status: "completed";
   readonly awayTeamId: string;
   readonly homeTeamId: string;
@@ -165,7 +170,41 @@ export interface MatchFieldingStats {
   readonly catchingErrors: number;
   readonly throwingErrors: number;
 }
+export type BaserunningAction = "hold" | "safe" | "out";
+export interface ThrowingFielder {
+  readonly id: string;
+  readonly position: "LF" | "CF" | "RF";
+  readonly arm: number;
+  readonly throwing: number;
+  readonly aptitude: number;
+}
+export interface BaserunningContext {
+  readonly eventIndex: number;
+  readonly runnerId: string;
+  readonly from: 1 | 2;
+  readonly target: 3 | "score";
+  readonly outcome: "single" | "double";
+  readonly outs: number;
+  readonly battedBall: "ground" | "fly";
+  readonly speed: number;
+  readonly fielder: ThrowingFielder;
+}
+export interface ExtraAdvanceEvent extends BaserunningContext {
+  readonly action: BaserunningAction;
+  readonly attempted: boolean;
+  readonly outPlayerId: string | null;
+  readonly probabilities: { readonly attempt: number; readonly out: number };
+}
+/** 配列順が成立順。フォース／打者走者の一塁到達前の第3アウトは全得点を無効にする。 */
+export interface PlayMoment {
+  readonly playerId: string;
+  readonly type: "score" | "out";
+  readonly outKind?: "batter" | "force" | "tag";
+}
 export interface MatchOptions {
+  /** 対象走者だけに呼ぶ。hold／safe／out以外は明示拒否する。 */
+  readonly resolveBaserunning?: (context: BaserunningContext) => BaserunningAction;
+
   /** 守備対象打球だけで呼ぶ決定的テスト注入。打席注入のみの場合は守備抽選しない。 */
   readonly resolveDefense?: (context: DefenseContext) => DefenseAction;
 

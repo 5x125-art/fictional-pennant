@@ -20,7 +20,7 @@ it("全12球団・256シードの試合で集計整合と得点環境を確認�
     sacrificeFlies = 0,
     errors = 0,
     hitsPrevented = 0,
-    earnedRuns = 0;
+    earnedRuns = 0, extraAdvanceAttempts = 0, extraAdvanceSuccesses = 0, baserunningOuts = 0;
   const before = JSON.stringify(matchFixtureWorld);
   for (let seed = 0; seed < games; seed++) {
     const away = teams[seed % 12].id,
@@ -32,6 +32,10 @@ it("全12球団・256シードの試合で集計整合と得点環境を確認�
     errors += Object.values(result.fieldingByPlayerId).reduce((n,s) => n+s.errors,0);
     hitsPrevented += Object.values(result.fieldingByPlayerId).reduce((n,s) => n+s.hitsPrevented,0);
     earnedRuns += Object.values(result.pitchingByPlayerId).reduce((n,s) => n+s.earnedRuns,0);
+    const extra = result.events.flatMap(e => e.movements.flatMap(m => m.extraAdvance ? [m.extraAdvance] : []));
+    extraAdvanceAttempts += extra.filter(e => e.attempted).length;
+    extraAdvanceSuccesses += extra.filter(e => e.action === "safe").length;
+    baserunningOuts += extra.filter(e => e.action === "out").length;
     assertMatchAccounting(result);
     expect(result.events.some(e => e.outcome === "sacrificeBunt")).toBe(false);
     for (const stat of Object.values(result.battingByPlayerId)) {
@@ -69,9 +73,9 @@ it("全12球団・256シードの試合で集計整合と得点環境を確認�
     extraInningGames: extras,
     doublePlays,
     sacrificeFlies,
-    errors, hitsPrevented, earnedRuns,
+    errors, hitsPrevented, earnedRuns, extraAdvanceAttempts, extraAdvanceSuccesses, baserunningOuts,
   };
-  console.log("Phase 3B-2 statistical sample", JSON.stringify(report));
+  console.log("Phase 3B-3A statistical sample", JSON.stringify(report));
   if (process.env.MATCH_STATISTICS_REPORT)
     writeFileSync(
       process.env.MATCH_STATISTICS_REPORT,
