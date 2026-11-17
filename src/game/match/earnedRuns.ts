@@ -34,6 +34,17 @@ export class EarnedRunReconstruction {
     this.outs += shadow.outsRecorded;
     for (const id of shadow.scoredPlayerIds) this.shadowScored.add(id);
   }
+  /** 実走者→出塁トークンを使う。仮想塁に存在しない走者を生成しない。 */
+  recordStealing(runnerId: string, from: 1 | 2, to: 2 | 3, action: "safe" | "out") {
+    const token = this.actualRunners.get(runnerId);
+    if (action === "out") this.actualRunners.delete(runnerId);
+    if (this.outs >= 3 || !token || this.bases[from-1] !== token || this.bases[to-1] !== null) return;
+    const next: [string | null, string | null, string | null] = [...this.bases];
+    next[from-1] = null;
+    if (action === "safe") next[to-1] = token;
+    else this.outs++;
+    this.bases = next;
+  }
   get earnedRuns() {
     return [...this.actualScored].filter(id => this.shadowScored.has(id)).length;
   }

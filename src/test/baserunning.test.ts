@@ -195,7 +195,7 @@ it("同シード再現・入力と正式世界の非変更・Math.random不使�
   try {
     const a = simulateMatch(input), b = simulateMatch(input);
     expect(a).toEqual(b);
-    expect(a.engineVersion).toBe(4);
+    expect(a.engineVersion).toBe(5);
     expect(JSON.stringify(input)).toBe(before);
     expect(JSON.stringify(a)).not.toMatch(/growthType|abilityCaps|developmentByPlayerId/);
     expect(extras(a).length).toBeGreaterThan(0);

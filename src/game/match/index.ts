@@ -8,3 +8,5 @@ export * from "./types";
 export { defenseProbabilities } from "./defense";
 
 export { baserunningProbabilities } from "./baserunning";
+
+export { stealingProbabilities } from "./stealing";

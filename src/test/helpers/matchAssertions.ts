@@ -11,6 +11,7 @@ export function assertMatchAccounting(result: MatchResult) {
   for (const side of ["away", "home"] as const) {
     const teamId = side === "away" ? result.awayTeamId : result.homeTeamId;
     const logs = result.events.filter((e) => e.battingTeamId === teamId);
+    const steals = result.stealingEvents.filter(e => e.battingTeamId === teamId);
     const ids = [...new Set(logs.map((e) => e.batterId))];
     const stats = ids.map((id) => result.battingByPlayerId[id]);
     expect(sum(stats.map((s) => s.runs))).toBe(result.score[side]);
@@ -24,12 +25,12 @@ export function assertMatchAccounting(result: MatchResult) {
       expect(s.hits).toBe(s.singles + s.doubles + s.triples + s.homeRuns);
       expect(s.plateAppearances).toBe(s.atBats + s.walks + s.hitByPitches + s.sacrificeBunts + s.sacrificeFlies);
       expect(s.strikeouts + s.hits).toBeLessThanOrEqual(s.atBats);
-      expect(
-        s.stolenBases + s.caughtStealing,
-      ).toBe(0);
+      const id = ids[stats.indexOf(s)];
+      expect(s.stolenBases).toBe(steals.filter(e => e.candidate?.id === id && e.action === "safe").length);
+      expect(s.caughtStealing).toBe(steals.filter(e => e.candidate?.id === id && e.action === "out").length);
     }
     const pitcher = result.pitchingByPlayerId[logs[0].pitcherId];
-    expect(pitcher.outs).toBe(sum(logs.map(e => e.outsRecorded)));
+    expect(pitcher.outs).toBe(sum(logs.map(e => e.outsRecorded)) + sum(steals.map(e => e.outsRecorded)));
     expect(pitcher.outs).toBe(
       sum(
         result.halfInnings
@@ -42,7 +43,7 @@ export function assertMatchAccounting(result: MatchResult) {
     expect(pitcher.walks).toBe(sum(stats.map((s) => s.walks)));
     expect(pitcher.hitBatters).toBe(sum(stats.map((s) => s.hitByPitches)));
     expect(pitcher.strikeouts).toBe(sum(stats.map((s) => s.strikeouts)));
-    expect(pitcher.pitches).toBe(sum(logs.map((e) => e.estimatedPitches)));
+    expect(pitcher.pitches).toBe(sum(logs.map((e) => e.estimatedPitches)) + sum(steals.map(e => e.estimatedPitches)));
     expect(pitcher.runsAllowed).toBe(result.score[side]);
     expect(pitcher.earnedRuns).toBeGreaterThanOrEqual(0);
     expect(pitcher.earnedRuns).toBeLessThanOrEqual(pitcher.runsAllowed);
@@ -54,6 +55,41 @@ export function assertMatchAccounting(result: MatchResult) {
     expect(stat.errors).toBe(logs.filter(e => e.defense?.error).length);
     expect(stat.hitsPrevented).toBe(logs.filter(e => e.defense?.hitPrevented).length);
     expect(stat.errors).toBe(stat.catchingErrors + stat.throwingErrors);
+  }
+  expect(result.timeline.filter(e => e.type === "plateAppearance").map(e => e.event)).toEqual(result.events);
+  expect(result.timeline.filter(e => e.type === "stealing").map(e => e.event)).toEqual(result.stealingEvents);
+  expect(result.stealingEvents.map(e => e.index)).toEqual(result.stealingEvents.map((_,i) => i));
+  let completedAppearances = 0;
+  for (let i = 0; i < result.timeline.length; i++) {
+    const entry = result.timeline[i], previous = result.timeline[i-1];
+    const before = entry.event.before;
+    if (entry.type === "plateAppearance") expect(entry.event.index).toBe(completedAppearances++);
+    else expect(entry.event.plateAppearanceIndex).toBe(completedAppearances);
+    if (previous && previous.event.after.inning === before.inning && previous.event.after.half === before.half)
+      expect(before).toEqual(previous.event.after);
+    if (entry.type === "stealing") {
+      const e = entry.event;
+      expect(e.after.nextBatterIndex).toEqual(before.nextBatterIndex);
+      expect(e.after.score).toEqual(before.score);
+      expect(e.after.outs-before.outs).toBe(e.outsRecorded);
+      expect(e.outsRecorded).toBe(e.action === "out" ? 1 : 0);
+      expect(e.estimatedPitches).toBe(e.endedHalfInning ? 1 : 0);
+      expect(e.movements).toHaveLength(e.attempted ? 1 : 0);
+      expect([...e.after.bases.filter(Boolean), ...e.movements.filter(m => m.to === "out").map(m => m.playerId)].sort()).toEqual([...before.bases.filter(Boolean)].sort());
+      expect(new Set(e.after.bases.filter(Boolean)).size).toBe(e.after.bases.filter(Boolean).length);
+      if (e.attempted) {
+        expect(e.candidate).not.toBeNull();
+        expect(before.bases[e.candidate!.from-1]).toBe(e.candidate!.id);
+        expect(before.bases[e.candidate!.to-1]).toBeNull();
+      }
+      if (e.endedHalfInning) {
+        expect(e.after.outs).toBe(3);
+        if (result.timeline[i+1]) expect(result.timeline[i+1].event.before.half !== before.half || result.timeline[i+1].event.before.inning !== before.inning).toBe(true);
+      } else {
+        expect(result.timeline[i+1]?.type).toBe("plateAppearance");
+        expect(result.timeline[i+1]?.event.batterId).toBe(e.batterId);
+      }
+    }
   }
   for (const event of result.events) {
     const before = event.before.bases.filter((id) => id !== null),

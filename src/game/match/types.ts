@@ -121,7 +121,7 @@ export interface MatchPitchingStats extends PitchingStats {
 export type EndReason =
   "regulation" | "extraInnings" | "walkOff" | "twelveInningDraw";
 export interface MatchResult {
-  readonly engineVersion: 4;
+  readonly engineVersion: 5;
   readonly status: "completed";
   readonly awayTeamId: string;
   readonly homeTeamId: string;
@@ -133,7 +133,10 @@ export interface MatchResult {
   readonly halfInnings: readonly HalfInningResult[];
   readonly battingByPlayerId: Readonly<Record<string, MatchBattingStats>>;
   readonly pitchingByPlayerId: Readonly<Record<string, MatchPitchingStats>>;
+  /** 完了した打席だけ。従来のindexはこの配列内の番号を維持する。 */
   readonly events: readonly PlateAppearanceEvent[];
+  readonly stealingEvents: readonly StealingEvent[];
+  readonly timeline: readonly MatchTimelineEntry[];
   readonly fieldingByPlayerId: Readonly<Record<string, MatchFieldingStats>>;
   readonly earnedRunMethod: "reconstructedInningApproximation";
   readonly finalState: Situation;
@@ -201,7 +204,57 @@ export interface PlayMoment {
   readonly type: "score" | "out";
   readonly outKind?: "batter" | "force" | "tag";
 }
+export interface StealCatcher {
+  readonly id: string;
+  readonly position: "C";
+  readonly arm: number;
+  readonly throwing: number;
+  readonly aptitude: number;
+}
+export interface StealRunner {
+  readonly id: string;
+  readonly speed: number;
+  readonly stealing: number;
+}
+export interface StealCandidate extends StealRunner {
+  readonly from: 1 | 2;
+  readonly to: 2 | 3;
+  readonly probabilities: {readonly attempt: number; readonly success: number};
+}
+export interface StealingContext {
+  /** 次の完了打席番号。盗塁死で交代した場合も増えない。 */
+  readonly plateAppearanceIndex: number;
+  readonly before: Situation;
+  readonly batterId: string;
+  readonly pitcherId: string;
+  readonly catcher: StealCatcher;
+  readonly candidates: readonly StealCandidate[];
+}
+export type StealingDecision = {readonly action: "hold"} |
+  {readonly action: "safe" | "out"; readonly runnerId: string};
+export interface StealingEvent extends StealingContext {
+  readonly index: number;
+  readonly battingTeamId: string;
+  readonly fieldingTeamId: string;
+  readonly battingOrderSlot: number;
+  readonly after: Situation;
+  readonly candidate: StealCandidate | null;
+  readonly action: "hold" | "safe" | "out";
+  readonly reason: "noEligibleRunner" | "hold" | "attempt";
+  readonly attempted: boolean;
+  readonly outsRecorded: 0 | 1;
+  readonly movements: readonly RunnerMovement[];
+  /** 完了打席の推定球数と重複しない追加分。第3アウトの盗塁死だけ1球。 */
+  readonly estimatedPitches: number;
+  readonly plateAppearanceCompleted: false;
+  readonly endedHalfInning: boolean;
+}
+export type MatchTimelineEntry =
+  {readonly type: "plateAppearance"; readonly event: PlateAppearanceEvent} |
+  {readonly type: "stealing"; readonly event: StealingEvent};
 export interface MatchOptions {
+  /** 各打席開始前に最大1回。候補外走者の指定・不明な結果は拒否する。 */
+  readonly resolveStealing?: (context: StealingContext) => StealingDecision;
   /** 対象走者だけに呼ぶ。hold／safe／out以外は明示拒否する。 */
   readonly resolveBaserunning?: (context: BaserunningContext) => BaserunningAction;
 
