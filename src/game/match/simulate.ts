@@ -6,6 +6,7 @@ import {
   simulationLimits,
 } from "./config";
 import { defenseFielder, resolveDefense } from "./defense";
+import { resolveBaserunning } from "./baserunning";
 import { EarnedRunReconstruction } from "./earnedRuns";
 import { drawPlateAppearance } from "./probability";
 import { advanceRunners, isHit } from "./runners";
@@ -25,6 +26,7 @@ import {
   type MatchFieldingStats,
   type MatchTeamInput,
   type DefenseFielder,
+  type ThrowingFielder,
   type PlateAppearanceEvent,
   type Side,
   type Situation,
@@ -82,7 +84,8 @@ export function simulateMatch(
     Array.isArray(options) ||
     (options.resolvePlateAppearance !== undefined &&
       typeof options.resolvePlateAppearance !== "function") ||
-    (options.resolveDefense !== undefined && typeof options.resolveDefense !== "function")
+    (options.resolveDefense !== undefined && typeof options.resolveDefense !== "function") ||
+    (options.resolveBaserunning !== undefined && typeof options.resolveBaserunning !== "function")
   )
     throw new MatchInputError("打席判定オプションが不正です。");
   const random = new SeededRandom(input.seed),
@@ -105,6 +108,15 @@ export function simulateMatch(
     }
     return positions;
   };
+  const teamThrows = (team: MatchTeamInput) => new Map<ThrowingFielder["position"], ThrowingFielder>(
+    team.battingOrder.filter(e => e.position === "LF" || e.position === "CF" || e.position === "RF").map(e => {
+      const p = index.get(e.playerId) as Fielder;
+      const position = e.position as ThrowingFielder["position"];
+      return [position, Object.freeze({id: p.id, position, arm: p.abilities.arm,
+        throwing: p.abilities.throwing, aptitude: p.positionAptitudes[position]})];
+    }));
+  const throwers = {away: teamThrows(input.away), home: teamThrows(input.home)};
+  const speeds = new Map([...batters.away, ...batters.home].map(p => [p.id, p.abilities.speed]));
   const fielders = { away: teamFielders(input.away), home: teamFielders(input.home) };
   const fieldingStats: Record<string, Mutable<MatchFieldingStats>> = Object.create(null);
   for (const side of ["away", "home"] as const) for (const f of fielders[side].values())
@@ -154,7 +166,7 @@ export function simulateMatch(
       pitching[pitchers[loser].id].losses = 1;
     }
     return {
-      engineVersion: 3,
+      engineVersion: 4,
       status: "completed",
       awayTeamId: teams.away.teamId,
       homeTeamId: teams.home.teamId,
@@ -232,7 +244,10 @@ export function simulateMatch(
           ds.catchingErrors += Number(defended.event.errorKind === "catching");
           ds.throwingErrors += Number(defended.event.errorKind === "throwing");
         }
-        const moved = advanceRunners(bases, batter.id, defended.outcome, required, outs);
+        const moved = options.resolvePlateAppearance && !options.resolveBaserunning
+          ? advanceRunners(bases, batter.id, defended.outcome, required, outs)
+          : resolveBaserunning(bases, batter.id, defended.outcome, outs, required, speeds,
+              throwers[fielding], defended.event, random, events.length, options.resolveBaserunning);
         const rbi = defended.outcome === "reachedOnError" ? 0 : moved.scoredPlayerIds.length;
         reconstruction.record(String(events.length), batter.id, moved,
           defended.outcome === "reachedOnError" ? drawn : moved.outcome);
@@ -298,6 +313,7 @@ export function simulateMatch(
           estimatedPitches: pitches,
           outsRecorded: moved.outsRecorded,
           movements: moved.movements,
+          playSequence: moved.playSequence,
         });
         if (
           half === "bottom" &&

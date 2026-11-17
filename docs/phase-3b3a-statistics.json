@@ -1,0 +1,22 @@
+{
+  "worldSeed": 786421,
+  "matchSeeds": "0..255",
+  "games": 256,
+  "teamGames": 512,
+  "runsPerTeam": 3.8359375,
+  "battingAverage": 0.2497473329590118,
+  "homeRunsPerTeam": 1.177734375,
+  "walkRate": 0.08086513994910942,
+  "strikeoutRate": 0.20798982188295165,
+  "pitchesPerTeam": 155.705078125,
+  "draws": 6,
+  "extraInningGames": 31,
+  "doublePlays": 373,
+  "sacrificeFlies": 107,
+  "errors": 117,
+  "hitsPrevented": 98,
+  "earnedRuns": 1918,
+  "extraAdvanceAttempts": 856,
+  "extraAdvanceSuccesses": 738,
+  "baserunningOuts": 118
+}
