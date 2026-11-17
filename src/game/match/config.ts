@@ -110,3 +110,14 @@ export const baserunningConfig = {
   out: { base: 0.12, speed: -0.0015, arm: 0.002, throwing: 0.0006,
     aptitude: 0.0004, home: 0.035, twoOuts: -0.02, ground: -0.02, min: 0.015, max: 0.45 },
 } as const;
+
+/** Phase 3B-3B暫定。将来のチーム盗塁方針はattemptMultiplierへ接続できる。 */
+export const stealingConfig = {
+  center: 50,
+  attemptMultiplier: 1,
+  attempt: { second: 0.055, third: 0.018, speed: 0.0004, stealing: 0.0006,
+    arm: -0.00012, twoOuts: -0.006, min: 0.002, max: 0.22 },
+  success: { base: 0.72, speed: 0.0018, stealing: 0.0022, arm: -0.0015,
+    throwing: -0.001, aptitude: -0.0008, third: -0.08, min: 0.20, max: 0.98 },
+  interruptedPlateAppearancePitches: 1,
+} as const;

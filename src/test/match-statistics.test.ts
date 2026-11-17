@@ -20,7 +20,7 @@ it("全12球団・256シードの試合で集計整合と得点環境を確認�
     sacrificeFlies = 0,
     errors = 0,
     hitsPrevented = 0,
-    earnedRuns = 0, extraAdvanceAttempts = 0, extraAdvanceSuccesses = 0, baserunningOuts = 0;
+    earnedRuns = 0, extraAdvanceAttempts = 0, extraAdvanceSuccesses = 0, baserunningOuts = 0, stolenBases = 0, caughtStealing = 0;
   const before = JSON.stringify(matchFixtureWorld);
   for (let seed = 0; seed < games; seed++) {
     const away = teams[seed % 12].id,
@@ -32,6 +32,8 @@ it("全12球団・256シードの試合で集計整合と得点環境を確認�
     errors += Object.values(result.fieldingByPlayerId).reduce((n,s) => n+s.errors,0);
     hitsPrevented += Object.values(result.fieldingByPlayerId).reduce((n,s) => n+s.hitsPrevented,0);
     earnedRuns += Object.values(result.pitchingByPlayerId).reduce((n,s) => n+s.earnedRuns,0);
+    stolenBases += result.stealingEvents.filter(e => e.action === "safe").length;
+    caughtStealing += result.stealingEvents.filter(e => e.action === "out").length;
     const extra = result.events.flatMap(e => e.movements.flatMap(m => m.extraAdvance ? [m.extraAdvance] : []));
     extraAdvanceAttempts += extra.filter(e => e.attempted).length;
     extraAdvanceSuccesses += extra.filter(e => e.action === "safe").length;
@@ -73,9 +75,10 @@ it("全12球団・256シードの試合で集計整合と得点環境を確認�
     extraInningGames: extras,
     doublePlays,
     sacrificeFlies,
-    errors, hitsPrevented, earnedRuns, extraAdvanceAttempts, extraAdvanceSuccesses, baserunningOuts,
+    errors, hitsPrevented, earnedRuns, extraAdvanceAttempts, extraAdvanceSuccesses, baserunningOuts, stealingAttempts: stolenBases+caughtStealing, stolenBases, caughtStealing,
+    stealingSuccessRate: stolenBases/(stolenBases+caughtStealing || 1),
   };
-  console.log("Phase 3B-3A statistical sample", JSON.stringify(report));
+  console.log("Phase 3B-3B statistical sample", JSON.stringify(report));
   if (process.env.MATCH_STATISTICS_REPORT)
     writeFileSync(
       process.env.MATCH_STATISTICS_REPORT,

@@ -4,9 +4,11 @@ import {
   estimatedPitchRanges,
   matchRules as rules,
   simulationLimits,
+  stealingConfig,
 } from "./config";
 import { defenseFielder, resolveDefense } from "./defense";
 import { resolveBaserunning } from "./baserunning";
+import { stealingCandidates, resolveStealing, applyStealing } from "./stealing";
 import { EarnedRunReconstruction } from "./earnedRuns";
 import { drawPlateAppearance } from "./probability";
 import { advanceRunners, isHit } from "./runners";
@@ -30,6 +32,10 @@ import {
   type PlateAppearanceEvent,
   type Side,
   type Situation,
+  type StealCatcher,
+  type StealingEvent,
+  type StealingContext,
+  type MatchTimelineEntry,
 } from "./types";
 type Mutable<T> = { -readonly [K in keyof T]: T[K] };
 function emptyBatting(): Mutable<MatchBattingStats> {
@@ -85,7 +91,8 @@ export function simulateMatch(
     (options.resolvePlateAppearance !== undefined &&
       typeof options.resolvePlateAppearance !== "function") ||
     (options.resolveDefense !== undefined && typeof options.resolveDefense !== "function") ||
-    (options.resolveBaserunning !== undefined && typeof options.resolveBaserunning !== "function")
+    (options.resolveBaserunning !== undefined && typeof options.resolveBaserunning !== "function") ||
+    (options.resolveStealing !== undefined && typeof options.resolveStealing !== "function")
   )
     throw new MatchInputError("打席判定オプションが不正です。");
   const random = new SeededRandom(input.seed),
@@ -116,6 +123,13 @@ export function simulateMatch(
         throwing: p.abilities.throwing, aptitude: p.positionAptitudes[position]})];
     }));
   const throwers = {away: teamThrows(input.away), home: teamThrows(input.home)};
+  const stealingRunners = new Map([...batters.away, ...batters.home].map(p => [p.id,
+    Object.freeze({id: p.id, speed: p.abilities.speed, stealing: p.abilities.stealing})]));
+  const teamCatcher = (team: MatchTeamInput): StealCatcher => {
+    const p = index.get(team.battingOrder.find(e => e.position === "C")!.playerId) as Fielder;
+    return Object.freeze({id: p.id, position: "C", arm: p.abilities.arm, throwing: p.abilities.throwing, aptitude: p.positionAptitudes.C});
+  };
+  const catchers = {away: teamCatcher(input.away), home: teamCatcher(input.home)};
   const speeds = new Map([...batters.away, ...batters.home].map(p => [p.id, p.abilities.speed]));
   const fielders = { away: teamFielders(input.away), home: teamFielders(input.home) };
   const fieldingStats: Record<string, Mutable<MatchFieldingStats>> = Object.create(null);
@@ -138,6 +152,7 @@ export function simulateMatch(
   const innings: { inning: number; away: number; home: number | null }[] = [],
     halves: HalfInningResult[] = [],
     events: PlateAppearanceEvent[] = [];
+  const stealingEvents: StealingEvent[] = [], timeline: MatchTimelineEntry[] = [];
   let finalState: Situation;
   const snapshot = (
     inning: number,
@@ -166,7 +181,7 @@ export function simulateMatch(
       pitching[pitchers[loser].id].losses = 1;
     }
     return {
-      engineVersion: 4,
+      engineVersion: 5,
       status: "completed",
       awayTeamId: teams.away.teamId,
       homeTeamId: teams.home.teamId,
@@ -178,6 +193,8 @@ export function simulateMatch(
       battingByPlayerId: batting,
       pitchingByPlayerId: pitching,
       events,
+      stealingEvents,
+      timeline,
       fieldingByPlayerId: fieldingStats,
       earnedRunMethod: "reconstructedInningApproximation",
       finalState,
@@ -206,12 +223,42 @@ export function simulateMatch(
       const reconstruction = new EarnedRunReconstruction();
       let walkOff = false;
       while (outs < rules.outsPerHalf) {
+        const batter = batters[side][next[side]],
+          pitcher = pitchers[fielding];
+        // 打席抽選の前に1回だけ判定。盗塁死で終了なら打者・打順を消費しない。
+        if (!options.resolvePlateAppearance || options.resolveStealing) {
+          const stealBefore = snapshot(inning, half, outs, bases);
+          const context: StealingContext = Object.freeze({plateAppearanceIndex: events.length, before: stealBefore,
+            batterId: batter.id, pitcherId: pitcher.id, catcher: catchers[fielding],
+            candidates: stealingCandidates(bases, outs, stealingRunners, catchers[fielding])});
+          const {action, candidate} = resolveStealing(context, random, options.resolveStealing);
+          const transition = applyStealing(bases, outs, candidate?.from ?? 1,
+            action === "hold" ? {action} : {action, runnerId: candidate!.id});
+          bases = transition.bases;
+          outs += transition.outsRecorded;
+          const endedHalfInning = outs === rules.outsPerHalf;
+          const stealPitches = endedHalfInning ? stealingConfig.interruptedPlateAppearancePitches : 0;
+          pitching[pitcher.id].outs += transition.outsRecorded;
+          pitching[pitcher.id].pitches += stealPitches;
+          if (candidate && action !== "hold") {
+            batting[candidate.id][action === "safe" ? "stolenBases" : "caughtStealing"]++;
+            reconstruction.recordStealing(candidate.id, candidate.from, candidate.to, action);
+          }
+          finalState = snapshot(inning, half, outs, bases);
+          const stealEvent: StealingEvent = {...context, index: stealingEvents.length,
+            battingTeamId: teams[side].teamId, fieldingTeamId: teams[fielding].teamId,
+            battingOrderSlot: next[side]+1, after: finalState, candidate, action,
+            reason: !candidate ? "noEligibleRunner" : action === "hold" ? "hold" : "attempt",
+            attempted: action !== "hold", outsRecorded: transition.outsRecorded, movements: transition.movements,
+            estimatedPitches: stealPitches, plateAppearanceCompleted: false, endedHalfInning};
+          stealingEvents.push(stealEvent);
+          timeline.push({type: "stealing", event: stealEvent});
+          if (endedHalfInning) break;
+        }
         if (appearances++ >= simulationLimits.plateAppearancesPerHalf)
           throw new MatchSimulationError(
             "半イニングの計算打席数が安全上限を超えました。試合結果は確定していません。",
           );
-        const batter = batters[side][next[side]],
-          pitcher = pitchers[fielding];
         const before = snapshot(inning, half, outs, bases);
         const drawn = options.resolvePlateAppearance
           ? options.resolvePlateAppearance(
@@ -315,6 +362,7 @@ export function simulateMatch(
           movements: moved.movements,
           playSequence: moved.playSequence,
         });
+        timeline.push({type: "plateAppearance", event: events[events.length-1]});
         if (
           half === "bottom" &&
           inning >= rules.regulationInnings &&
