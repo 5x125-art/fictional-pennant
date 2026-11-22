@@ -10,6 +10,7 @@ import { defenseFielder, resolveDefense } from "./defense";
 import { resolveBaserunning } from "./baserunning";
 import { stealingCandidates, resolveStealing, applyStealing } from "./stealing";
 import { EarnedRunReconstruction } from "./earnedRuns";
+import { assessAIPitchingChange, validateAIPitchingStrategy } from "./aiPitching";
 import { availablePitcher, resolvePitchingChange } from "./pitchingChanges";
 import { pitcherFatigueState } from "./fatigue";
 import { drawPlateAppearance } from "./probability";
@@ -99,9 +100,12 @@ export function simulateMatch(
     (options.resolveDefense !== undefined && typeof options.resolveDefense !== "function") ||
     (options.resolveBaserunning !== undefined && typeof options.resolveBaserunning !== "function") ||
     (options.resolveStealing !== undefined && typeof options.resolveStealing !== "function") ||
-    (options.resolvePitchingChange !== undefined && typeof options.resolvePitchingChange !== "function")
+    (options.resolvePitchingChange !== undefined && typeof options.resolvePitchingChange !== "function") ||
+    (options.autoPitching !== undefined && typeof options.autoPitching !== "boolean")
   )
     throw new MatchInputError("打席判定オプションが不正です。");
+  if (options.pitchingStrategy !== undefined) validateAIPitchingStrategy(options.pitchingStrategy);
+  const autoPitching = options.autoPitching ?? !options.resolvePlateAppearance;
   const random = new SeededRandom(input.seed),
     initialState = random.getState();
   const teams = { away: input.away, home: input.home };
@@ -199,7 +203,7 @@ export function simulateMatch(
       pitching[pitchers[loser].id].losses = 1;
     }
     return {
-      engineVersion: 7,
+      engineVersion: 8,
       status: "completed",
       awayTeamId: teams.away.teamId,
       homeTeamId: teams.home.teamId,
@@ -252,15 +256,16 @@ export function simulateMatch(
           appearance.entry = snapshot(inning,half,outs,bases);
           appearance.entryTimelineIndex = timeline.length;
         }
-        if (options.resolvePitchingChange) {
+        if (options.resolvePitchingChange || autoPitching) {
           const changeBefore = snapshot(inning,half,outs,bases);
           const context: PitchingChangeContext = Object.freeze({eventIndex:events.length,timelineIndex:timeline.length,
             before:changeBefore,battingTeamId:teams[side].teamId,fieldingTeamId:teams[fielding].teamId,
-            batter,currentPitcherId:pitcher.id,currentFatigue:fatigueByPitcherId[pitcher.id],
+            batter,currentPitcherId:pitcher.id,currentPitcher:pools[fielding].find(p => p.id===pitcher.id)!,currentAppearance:Object.freeze({...appearance}),currentFatigue:fatigueByPitcherId[pitcher.id],
             currentStats:Object.freeze({...pitching[pitcher.id],earnedRuns:pitching[pitcher.id].earnedRuns+(reconstruction.earnedRunsByPitcherId[pitcher.id] ?? 0)}),
             availablePitchers:Object.freeze(pools[fielding].filter(p => !usedPitchers.has(p.id))),
             responsibilities:reconstruction.activeResponsibilities});
-          const replacement = resolvePitchingChange(context,options.resolvePitchingChange(context));
+          const ai = options.resolvePitchingChange ? undefined : assessAIPitchingChange(context,options.pitchingStrategy);
+          const replacement = resolvePitchingChange(context,options.resolvePitchingChange ? options.resolvePitchingChange(context) : ai!.decision);
           if (replacement) {
             appearance.exit = changeBefore; appearance.exitTimelineIndex = timeline.length;
             const outgoingPitcherId = pitcher.id;
@@ -272,7 +277,7 @@ export function simulateMatch(
               entryTimelineIndex:timeline.length,entry:changeBefore,exitTimelineIndex:null,exit:null});
             const event: PitchingChangeEvent = {...context,batterId:batter.id,index:pitchingChanges.length,plateAppearanceIndex:events.length,
               after:changeBefore,pitcherId:pitcher.id,outgoingPitcherId,incomingPitcherId:pitcher.id,
-              incomingFatigue:fatigueByPitcherId[pitcher.id],reason:"explicitInstruction",estimatedPitches:0,outsRecorded:0};
+              incomingFatigue:fatigueByPitcherId[pitcher.id],reason:ai ? ai.reason as import("./types").AIPitchingChangeReason : "explicitInstruction",decisionSource:ai ? "ai" : "explicit",...(ai ? {ai} : {}),estimatedPitches:0,outsRecorded:0};
             pitchingChanges.push(event); timeline.push({type:"pitchingChange",event});
           }
         }

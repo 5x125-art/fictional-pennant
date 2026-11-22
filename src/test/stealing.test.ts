@@ -187,7 +187,7 @@ it("同一シード再現・セーブ世界と正式乱数の非変更・Math.ra
     const a = simulateMatch(input);
     expect(simulateMatch(input)).toEqual(a);
     expect(simulateMatch({...input,seed:input.seed+1})).not.toEqual(a);
-    expect(a.engineVersion).toBe(7);
+    expect(a.engineVersion).toBe(8);
     expect(JSON.stringify(a)).not.toMatch(/growthType|abilityCaps|developmentByPlayerId/);
     expect(JSON.stringify(input)).toBe(source);
     expect(JSON.stringify(matchFixtureWorld)).toBe(before);

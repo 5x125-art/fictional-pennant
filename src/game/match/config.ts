@@ -132,3 +132,26 @@ export const pitcherFatigueConfig = {
   maxReduction: {velocityKmh: 4, control: 10, pitchPower: 8, pitchControl: 10},
   minimumVelocityKmh: 1,
 } as const;
+
+/** Phase 3C-3暫定。すべて試合内の判断係数で、保存OVR・チーム設定ではない。 */
+export const aiPitchingConfig = {
+  defaultAggression: 0.5,
+  closeMargin: 2, bulkMargin: 5, lateInning: 7, closerInning: 9, earlyInning: 4, reserveExtraInning:8, fatigueReasonThreshold:50,
+  budget: {starterBase: 60, starterStamina: 0.55, reliefStamina: 0.12, suitability: 0.06,
+    relief: {starter:45, closer:23, setup:23, middle:27, long:55}},
+  pressure: {workload:0.70, fatigue:0.70, abilityLoss:0.15, traffic:0.035, trafficPerOut:0.6, runs:0.025, maxTrouble:0.4, lateRole:0.15},
+  threshold: {base:1.15, closeLate:-0.18, closeRunners:-0.07, bulk:0.20, lastCandidate:0.18,
+    reserveExtra:0.10, scarce:0.12, aggression:0.50, reserveInningsPerPitcher:3},
+  earlyExit: {minimumPitches:25, runs:4, traffic:6},
+  shortStint: {outs:3, pitches:18, lateMinimumPitches:12},
+  emergency: {fatigue:90, budgetRatio:1.65},
+  ability: {control:0.18, velocity:0.22, velocityCenter:130, power:0.16, pitchControl:0.12, movement:1.2, reliefSuitability:0.12},
+  handedness:1.5, bulkStamina:0.07, otherStamina:0.01,
+  roleFit: {
+    bulk:{starter:-18, closer:-22, setup:-12, middle:8, long:18},
+    middle:{starter:-25, closer:-18, setup:-8, middle:12, long:7},
+    late:{starter:-20, closer:10, setup:18, middle:6, long:0},
+    closing:{starter:-20, closer:22, setup:10, middle:6, long:0},
+    extra:{starter:-10, closer:14, setup:12, middle:10, long:8},
+  },
+} as const;

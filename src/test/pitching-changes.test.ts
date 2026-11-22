@@ -147,7 +147,7 @@ it("同シード・決定的継投の完全再現、選手・セーブ・正式�
   const before=JSON.stringify(matchFixtureWorld),source=JSON.stringify(input);
   const change:Change=c=>c.currentFatigue.pitches>=60&&c.availablePitchers.length?{action:"change",pitcherId:c.availablePitchers[0].id}:stay;
   const spy=vi.spyOn(Math,"random").mockImplementation(()=>{throw Error("禁止");});
-  try{const a=simulateMatch(input,{resolvePitchingChange:change});expect(simulateMatch(input,{resolvePitchingChange:change})).toEqual(a);expect(a.engineVersion).toBe(7);expect(a.pitchingChanges.length).toBeGreaterThan(0);expect(JSON.stringify(a)).not.toMatch(/growthType|abilityCaps|developmentByPlayerId|fitness/);expect(JSON.stringify(input)).toBe(source);expect(JSON.stringify(matchFixtureWorld)).toBe(before);assertMatchAccounting(a);}finally{spy.mockRestore();}
+  try{const a=simulateMatch(input,{resolvePitchingChange:change});expect(simulateMatch(input,{resolvePitchingChange:change})).toEqual(a);expect(a.engineVersion).toBe(8);expect(a.pitchingChanges.length).toBeGreaterThan(0);expect(JSON.stringify(a)).not.toMatch(/growthType|abilityCaps|developmentByPlayerId|fitness/);expect(JSON.stringify(input)).toBe(source);expect(JSON.stringify(matchFixtureWorld)).toBe(before);assertMatchAccounting(a);}finally{spy.mockRestore();}
 });
 
 it("当日ベンチそのものが未登録・育成・他球団選手を含む場合は開始前に拒否",()=>{
