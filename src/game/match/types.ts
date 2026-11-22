@@ -3,6 +3,7 @@ import type {
   Fielder,
   FieldPosition,
   Pitcher,
+  PitcherRole,
   PitchingStats,
   Player,
 } from "../players/types";
@@ -113,6 +114,7 @@ export interface PlateAppearanceEvent {
   readonly before: Situation;
   readonly after: Situation;
   readonly scoredPlayerIds: readonly string[];
+  readonly scoredRuns: readonly RunnerResponsibility[];
   readonly runsBattedIn: number;
   readonly estimatedPitches: number;
   readonly outsRecorded: number;
@@ -120,6 +122,7 @@ export interface PlateAppearanceEvent {
   readonly defense: DefenseEvent | null;
   readonly playSequence: readonly PlayMoment[];
   readonly pitcherFatigue: PitcherFatigueLog;
+  readonly responsibilities: readonly RunnerResponsibility[];
 }
 export interface HalfInningResult {
   readonly inning: number;
@@ -146,7 +149,7 @@ export interface MatchPitchingStats extends PitchingStats {
 export type EndReason =
   "regulation" | "extraInnings" | "walkOff" | "twelveInningDraw";
 export interface MatchResult {
-  readonly engineVersion: 6;
+  readonly engineVersion: 7;
   readonly status: "completed";
   readonly awayTeamId: string;
   readonly homeTeamId: string;
@@ -163,6 +166,9 @@ export interface MatchResult {
   readonly events: readonly PlateAppearanceEvent[];
   readonly stealingEvents: readonly StealingEvent[];
   readonly timeline: readonly MatchTimelineEntry[];
+  readonly pitchingChanges: readonly PitchingChangeEvent[];
+  readonly pitcherAppearances: readonly PitcherAppearance[];
+  readonly pitchingDecision: {readonly status: "completeGame" | "draw" | "unadjudicated"; readonly reason?: "multiplePitchers"};
   readonly fieldingByPlayerId: Readonly<Record<string, MatchFieldingStats>>;
   readonly earnedRunMethod: "reconstructedInningApproximation";
   readonly finalState: Situation;
@@ -273,13 +279,62 @@ export interface StealingEvent extends StealingContext {
   /** 完了打席の推定球数と重複しない追加分。第3アウトの盗塁死だけ1球。 */
   readonly estimatedPitches: number;
   readonly pitcherFatigue: PitcherFatigueLog;
+  readonly responsibilities: readonly RunnerResponsibility[];
   readonly plateAppearanceCompleted: false;
   readonly endedHalfInning: boolean;
 }
+export interface RunnerResponsibility {
+  readonly token: string;
+  readonly playerId: string;
+  readonly responsiblePitcherId: string;
+}
+export interface AvailablePitcher extends MatchPitcher {
+  readonly role: PitcherRole;
+}
+export interface PitchingChangeContext {
+  readonly eventIndex: number;
+  readonly timelineIndex: number;
+  readonly before: Situation;
+  readonly battingTeamId: string;
+  readonly fieldingTeamId: string;
+  readonly batter: MatchBatter;
+  readonly currentPitcherId: string;
+  readonly currentFatigue: PitcherFatigueState;
+  readonly currentStats: MatchPitchingStats;
+  readonly availablePitchers: readonly AvailablePitcher[];
+  readonly responsibilities: readonly RunnerResponsibility[];
+}
+export type PitchingChangeDecision = {readonly action: "continue"} |
+  {readonly action: "change"; readonly pitcherId: string};
+export interface PitchingChangeEvent extends PitchingChangeContext {
+  readonly batterId: string;
+  readonly index: number;
+  readonly plateAppearanceIndex: number;
+  readonly after: Situation;
+  readonly pitcherId: string;
+  readonly outgoingPitcherId: string;
+  readonly incomingPitcherId: string;
+  readonly incomingFatigue: PitcherFatigueState;
+  readonly reason: "explicitInstruction";
+  readonly estimatedPitches: 0;
+  readonly outsRecorded: 0;
+}
+export interface PitcherAppearance {
+  readonly pitcherId: string;
+  readonly teamId: string;
+  readonly role: PitcherRole;
+  readonly starter: boolean;
+  readonly entryTimelineIndex: number | null;
+  readonly entry: Situation | null;
+  readonly exitTimelineIndex: number | null;
+  readonly exit: Situation | null;
+}
 export type MatchTimelineEntry =
   {readonly type: "plateAppearance"; readonly event: PlateAppearanceEvent} |
-  {readonly type: "stealing"; readonly event: StealingEvent};
+  {readonly type: "stealing"; readonly event: StealingEvent} |
+  {readonly type: "pitchingChange"; readonly event: PitchingChangeEvent};
 export interface MatchOptions {
+  readonly resolvePitchingChange?: (context: PitchingChangeContext) => PitchingChangeDecision;
   /** 各打席開始前に最大1回。候補外走者の指定・不明な結果は拒否する。 */
   readonly resolveStealing?: (context: StealingContext) => StealingDecision;
   /** 対象走者だけに呼ぶ。hold／safe／out以外は明示拒否する。 */

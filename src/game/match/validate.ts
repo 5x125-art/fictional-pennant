@@ -90,6 +90,7 @@ function validatePlayer(value: unknown) {
     for (const position of fieldPositions)
       integer(value.positionAptitudes[position], 0, 100);
   } else {
+    check(["starter","closer","setup","middle","long"].includes(value.role as string), "投手の役割が不正です。");
     check(value.primaryPosition === "P", "投手の守備位置が不正です。");
     integer(value.abilities.velocityKmh, 1, 300);
     for (const key of [

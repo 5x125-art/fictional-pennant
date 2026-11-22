@@ -133,11 +133,11 @@ it("失策走者の盗塁死は仮想走者を生成せず、後続の正規得�
 });
 it("出塁トークンを維持して一巡後の同じ選手と区別（再構成単体）", () => {
   const er = new EarnedRunReconstruction();
-  er.record("error-token","a",advanceRunners([null,null,null],"a","reachedOnError"),"groundOut");
+  er.record("error-token","a",advanceRunners([null,null,null],"a","reachedOnError"),"groundOut","pitcher");
   er.recordStealing("a",1,2,"out");
-  er.record("legitimate-token","a",advanceRunners([null,null,null],"a","walk"),"walk");
+  er.record("legitimate-token","a",advanceRunners([null,null,null],"a","walk"),"walk","pitcher");
   er.recordStealing("a",1,2,"safe");
-  er.record("hit-token","b",advanceRunners([null,"a",null],"b","double"),"double");
+  er.record("hit-token","b",advanceRunners([null,"a",null],"b","double"),"double","pitcher");
   expect(er.earnedRuns).toBe(1);
 });
 it("安打時走塁死は盗塁死へ加算しない", () => {
@@ -187,7 +187,7 @@ it("同一シード再現・セーブ世界と正式乱数の非変更・Math.ra
     const a = simulateMatch(input);
     expect(simulateMatch(input)).toEqual(a);
     expect(simulateMatch({...input,seed:input.seed+1})).not.toEqual(a);
-    expect(a.engineVersion).toBe(6);
+    expect(a.engineVersion).toBe(7);
     expect(JSON.stringify(a)).not.toMatch(/growthType|abilityCaps|developmentByPlayerId/);
     expect(JSON.stringify(input)).toBe(source);
     expect(JSON.stringify(matchFixtureWorld)).toBe(before);

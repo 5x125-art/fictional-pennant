@@ -1,4 +1,5 @@
-import { writeFileSync } from "node:fs";
+import { writeFileSync, readFileSync } from "node:fs";
+import { createHash } from "node:crypto";
 import { expect, it } from "vitest";
 import { teams } from "../data/teams";
 import { simulateMatch } from "../game/match/simulate";
@@ -6,6 +7,7 @@ import { assertMatchAccounting } from "./helpers/matchAssertions";
 import { matchFixture, matchFixtureWorld } from "./helpers/matchFixture";
 it("全12球団・256シードの試合で集計整合と得点環境を確認する", () => {
   const games = 256;
+  const behaviorHashes: string[] = [];
   let runs = 0,
     hits = 0,
     atBats = 0,
@@ -28,6 +30,8 @@ it("全12球団・256シードの試合で集計整合と得点環境を確認�
       home = teams[((seed % 12) + 1 + (Math.floor(seed / 12) % 11)) % 12].id;
     const input = matchFixture(seed, away, home),
       result = simulateMatch(input);
+    behaviorHashes.push(createHash("sha256").update(JSON.stringify(result,(key,value) =>
+      ["engineVersion","pitchingChanges","pitcherAppearances","pitchingDecision","scoredRuns","responsibilities"].includes(key) ? undefined : value)).digest("hex"));
     for (const e of result.events) {
       const period = e.inning >= 7 ? late : early;
       period.plateAppearances++; period.runs += e.scoredPlayerIds.length;
@@ -92,6 +96,8 @@ it("全12球団・256シードの試合で集計整合と得点環境を確認�
       process.env.MATCH_STATISTICS_REPORT,
       JSON.stringify(report, null, 2) + "\n",
     );
+  if (process.env.MATCH_BEHAVIOR_REPORT) writeFileSync(process.env.MATCH_BEHAVIOR_REPORT,JSON.stringify(behaviorHashes,null,2)+"\n");
+  if (process.env.MATCH_BEHAVIOR_BASELINE) expect(behaviorHashes).toEqual(JSON.parse(readFileSync(process.env.MATCH_BEHAVIOR_BASELINE,"utf8")));
   expect(doublePlays).toBeGreaterThan(0);
   expect(sacrificeFlies).toBeGreaterThan(0);
   expect(report.runsPerTeam).toBeGreaterThan(1);
