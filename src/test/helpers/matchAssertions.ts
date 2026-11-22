@@ -56,8 +56,30 @@ export function assertMatchAccounting(result: MatchResult) {
     expect(stat.hitsPrevented).toBe(logs.filter(e => e.defense?.hitPrevented).length);
     expect(stat.errors).toBe(stat.catchingErrors + stat.throwingErrors);
   }
-  expect(result.timeline.filter(e => e.type === "plateAppearance").map(e => e.event)).toEqual(result.events);
-  expect(result.timeline.filter(e => e.type === "stealing").map(e => e.event)).toEqual(result.stealingEvents);
+  const paTimeline = result.timeline.filter(e => e.type === "plateAppearance");
+  const stealingTimeline = result.timeline.filter(e => e.type === "stealing");
+  expect(paTimeline).toHaveLength(result.events.length);
+  expect(stealingTimeline).toHaveLength(result.stealingEvents.length);
+  paTimeline.forEach((entry,i) => expect(entry.event).toBe(result.events[i]));
+  stealingTimeline.forEach((entry,i) => expect(entry.event).toBe(result.stealingEvents[i]));
+  for (const [id,stat] of Object.entries(result.pitchingByPlayerId)) {
+    const logs = result.timeline.filter(e => e.event.pitcherId === id);
+    let pitches = 0, fatigue = 0;
+    for (const {event} of logs) {
+      const f = event.pitcherFatigue;
+      expect(f.before.pitcherId).toBe(id);
+      expect(f.after.pitcherId).toBe(id);
+      expect(f.before.pitches).toBe(pitches);
+      pitches += event.estimatedPitches;
+      expect(f.after.pitches).toBe(pitches);
+      expect(f.before.fatigue).toBe(fatigue);
+      expect(f.after.fatigue).toBeGreaterThanOrEqual(fatigue);
+      expect(f.after.fatigue).toBeLessThanOrEqual(100);
+      fatigue = f.after.fatigue;
+    }
+    expect(pitches).toBe(stat.pitches);
+    expect(result.pitcherFatigueByPlayerId[id]).toBe(logs.at(-1)!.event.pitcherFatigue.after);
+  }
   expect(result.stealingEvents.map(e => e.index)).toEqual(result.stealingEvents.map((_,i) => i));
   let completedAppearances = 0;
   for (let i = 0; i < result.timeline.length; i++) {

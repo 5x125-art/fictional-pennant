@@ -22,11 +22,17 @@ it("全12球団・256シードの試合で集計整合と得点環境を確認�
     hitsPrevented = 0,
     earnedRuns = 0, extraAdvanceAttempts = 0, extraAdvanceSuccesses = 0, baserunningOuts = 0, stolenBases = 0, caughtStealing = 0;
   const before = JSON.stringify(matchFixtureWorld);
+  const early = {plateAppearances:0,runs:0,walks:0,strikeouts:0}, late = {...early};
   for (let seed = 0; seed < games; seed++) {
     const away = teams[seed % 12].id,
       home = teams[((seed % 12) + 1 + (Math.floor(seed / 12) % 11)) % 12].id;
     const input = matchFixture(seed, away, home),
       result = simulateMatch(input);
+    for (const e of result.events) {
+      const period = e.inning >= 7 ? late : early;
+      period.plateAppearances++; period.runs += e.scoredPlayerIds.length;
+      period.walks += Number(e.outcome === "walk"); period.strikeouts += Number(e.outcome === "strikeout");
+    }
     doublePlays += result.events.filter(e => e.outcome === "groundDoublePlay").length;
     sacrificeFlies += result.events.filter(e => e.outcome === "sacrificeFly").length;
     errors += Object.values(result.fieldingByPlayerId).reduce((n,s) => n+s.errors,0);
@@ -76,9 +82,11 @@ it("全12球団・256シードの試合で集計整合と得点環境を確認�
     doublePlays,
     sacrificeFlies,
     errors, hitsPrevented, earnedRuns, extraAdvanceAttempts, extraAdvanceSuccesses, baserunningOuts, stealingAttempts: stolenBases+caughtStealing, stolenBases, caughtStealing,
+    periods: {early: {...early,runsPerPlateAppearance:early.runs/early.plateAppearances,walkRate:early.walks/early.plateAppearances},
+      late: {...late,runsPerPlateAppearance:late.runs/late.plateAppearances,walkRate:late.walks/late.plateAppearances}},
     stealingSuccessRate: stolenBases/(stolenBases+caughtStealing || 1),
   };
-  console.log("Phase 3B-3B statistical sample", JSON.stringify(report));
+  console.log("Phase 3C-1 statistical sample", JSON.stringify(report));
   if (process.env.MATCH_STATISTICS_REPORT)
     writeFileSync(
       process.env.MATCH_STATISTICS_REPORT,

@@ -10,6 +10,7 @@ import { defenseFielder, resolveDefense } from "./defense";
 import { resolveBaserunning } from "./baserunning";
 import { stealingCandidates, resolveStealing, applyStealing } from "./stealing";
 import { EarnedRunReconstruction } from "./earnedRuns";
+import { pitcherFatigueState } from "./fatigue";
 import { drawPlateAppearance } from "./probability";
 import { advanceRunners, isHit } from "./runners";
 import { matchBatter, matchPitcher, validateMatchInput } from "./validate";
@@ -36,6 +37,7 @@ import {
   type StealingEvent,
   type StealingContext,
   type MatchTimelineEntry,
+  type PitcherFatigueState,
 } from "./types";
 type Mutable<T> = { -readonly [K in keyof T]: T[K] };
 function emptyBatting(): Mutable<MatchBattingStats> {
@@ -147,6 +149,8 @@ export function simulateMatch(
     for (const b of batters[side]) batting[b.id] = emptyBatting();
     pitching[pitchers[side].id] = emptyPitching();
   }
+  const fatigueByPitcherId: Record<string, PitcherFatigueState> = Object.create(null);
+  for (const pitcher of Object.values(pitchers)) fatigueByPitcherId[pitcher.id] = pitcherFatigueState(pitcher,0);
   const score = { away: 0, home: 0 },
     next = { away: 0, home: 0 };
   const innings: { inning: number; away: number; home: number | null }[] = [],
@@ -181,7 +185,7 @@ export function simulateMatch(
       pitching[pitchers[loser].id].losses = 1;
     }
     return {
-      engineVersion: 5,
+      engineVersion: 6,
       status: "completed",
       awayTeamId: teams.away.teamId,
       homeTeamId: teams.home.teamId,
@@ -192,6 +196,7 @@ export function simulateMatch(
       halfInnings: halves,
       battingByPlayerId: batting,
       pitchingByPlayerId: pitching,
+      pitcherFatigueByPlayerId: fatigueByPitcherId,
       events,
       stealingEvents,
       timeline,
@@ -227,6 +232,7 @@ export function simulateMatch(
           pitcher = pitchers[fielding];
         // 打席抽選の前に1回だけ判定。盗塁死で終了なら打者・打順を消費しない。
         if (!options.resolvePlateAppearance || options.resolveStealing) {
+          const fatigueBeforeSteal = fatigueByPitcherId[pitcher.id];
           const stealBefore = snapshot(inning, half, outs, bases);
           const context: StealingContext = Object.freeze({plateAppearanceIndex: events.length, before: stealBefore,
             batterId: batter.id, pitcherId: pitcher.id, catcher: catchers[fielding],
@@ -240,6 +246,7 @@ export function simulateMatch(
           const stealPitches = endedHalfInning ? stealingConfig.interruptedPlateAppearancePitches : 0;
           pitching[pitcher.id].outs += transition.outsRecorded;
           pitching[pitcher.id].pitches += stealPitches;
+          if (stealPitches) fatigueByPitcherId[pitcher.id] = pitcherFatigueState(pitcher,pitching[pitcher.id].pitches);
           if (candidate && action !== "hold") {
             batting[candidate.id][action === "safe" ? "stolenBases" : "caughtStealing"]++;
             reconstruction.recordStealing(candidate.id, candidate.from, candidate.to, action);
@@ -250,7 +257,8 @@ export function simulateMatch(
             battingOrderSlot: next[side]+1, after: finalState, candidate, action,
             reason: !candidate ? "noEligibleRunner" : action === "hold" ? "hold" : "attempt",
             attempted: action !== "hold", outsRecorded: transition.outsRecorded, movements: transition.movements,
-            estimatedPitches: stealPitches, plateAppearanceCompleted: false, endedHalfInning};
+            estimatedPitches: stealPitches,
+            pitcherFatigue:{before:fatigueBeforeSteal,after:fatigueByPitcherId[pitcher.id]}, plateAppearanceCompleted: false, endedHalfInning};
           stealingEvents.push(stealEvent);
           timeline.push({type: "stealing", event: stealEvent});
           if (endedHalfInning) break;
@@ -259,6 +267,8 @@ export function simulateMatch(
           throw new MatchSimulationError(
             "半イニングの計算打席数が安全上限を超えました。試合結果は確定していません。",
           );
+        const fatigueBefore = fatigueByPitcherId[pitcher.id];
+        const effectivePitcher = fatigueBefore.effectivePitcher;
         const before = snapshot(inning, half, outs, bases);
         const drawn = options.resolvePlateAppearance
           ? options.resolvePlateAppearance(
@@ -266,11 +276,12 @@ export function simulateMatch(
                 eventIndex: events.length,
                 battingOrderSlot: next[side] + 1,
                 batter,
-                pitcher,
+                pitcher: effectivePitcher,
+                pitcherFatigue: fatigueBefore,
                 before,
               }),
             )
-          : drawPlateAppearance(batter, pitcher, random, before);
+          : drawPlateAppearance(batter, effectivePitcher, random, before);
         if (!playOutcomes.includes(drawn) || drawn === "reachedOnError")
           throw new MatchSimulationError(
             "未対応の打席結果です。試合結果は確定していません。",
@@ -336,6 +347,7 @@ export function simulateMatch(
         bs.runsBattedIn += rbi;
         ps.runsAllowed += runs;
         ps.pitches += pitches;
+        fatigueByPitcherId[pitcher.id] = pitcherFatigueState(pitcher,ps.pitches);
         score[side] += runs;
         frame[side] = (frame[side] ?? 0) + runs;
         bases = moved.bases;
@@ -361,6 +373,7 @@ export function simulateMatch(
           outsRecorded: moved.outsRecorded,
           movements: moved.movements,
           playSequence: moved.playSequence,
+          pitcherFatigue:{before:fatigueBefore,after:fatigueByPitcherId[pitcher.id]},
         });
         timeline.push({type: "plateAppearance", event: events[events.length-1]});
         if (

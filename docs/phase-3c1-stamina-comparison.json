@@ -1,0 +1,84 @@
+{
+  "worldSeed": 786421,
+  "matchSeeds": "0..255",
+  "low": {
+    "stamina": 0,
+    "games": 256,
+    "runsPerTeam": 3.83984375,
+    "battingAverage": 0.24995755758021618,
+    "homeRunsPerTeam": 1.17578125,
+    "walkRate": 0.08634855830569023,
+    "strikeoutRate": 0.20051033426894616,
+    "pitchesPerTeam": 155.46484375,
+    "averageFinalFatigue": 99.93164062499999,
+    "averagePrePlateAppearanceFatigue": 50.104873692268775,
+    "averageEffectiveControl": 49.61408522582291,
+    "stolenBases": 257,
+    "caughtStealing": 100,
+    "extraAdvanceSuccesses": 686,
+    "baserunningOuts": 109,
+    "errors": 107,
+    "hitsPrevented": 94,
+    "earnedRuns": 1915,
+    "extraInningGames": 32,
+    "draws": 5,
+    "periods": {
+      "early": {
+        "plateAppearances": 13057,
+        "runs": 1292,
+        "walks": 1104,
+        "strikeouts": 2642,
+        "runsPerPlateAppearance": 0.09895075438462128,
+        "walkRate": 0.08455234739986214
+      },
+      "late": {
+        "plateAppearances": 6538,
+        "runs": 674,
+        "walks": 588,
+        "strikeouts": 1287,
+        "runsPerPlateAppearance": 0.10308962985622515,
+        "walkRate": 0.08993576017130621
+      }
+    }
+  },
+  "high": {
+    "stamina": 100,
+    "games": 256,
+    "runsPerTeam": 3.701171875,
+    "battingAverage": 0.24858433907224162,
+    "homeRunsPerTeam": 1.185546875,
+    "walkRate": 0.08250944665872975,
+    "strikeoutRate": 0.20497955380713287,
+    "pitchesPerTeam": 153.205078125,
+    "averageFinalFatigue": 66.33463541666664,
+    "averagePrePlateAppearanceFatigue": 11.239798471280398,
+    "averageEffectiveControl": 53.62580878927481,
+    "stolenBases": 236,
+    "caughtStealing": 108,
+    "extraAdvanceSuccesses": 662,
+    "baserunningOuts": 105,
+    "errors": 105,
+    "hitsPrevented": 96,
+    "earnedRuns": 1845,
+    "extraInningGames": 19,
+    "draws": 4,
+    "periods": {
+      "early": {
+        "plateAppearances": 13012,
+        "runs": 1282,
+        "walks": 1056,
+        "strikeouts": 2649,
+        "runsPerPlateAppearance": 0.09852443897940363,
+        "walkRate": 0.08115585613280049
+      },
+      "late": {
+        "plateAppearances": 6307,
+        "runs": 613,
+        "walks": 538,
+        "strikeouts": 1311,
+        "runsPerPlateAppearance": 0.09719359441889963,
+        "walkRate": 0.08530204534644047
+      }
+    }
+  }
+}
