@@ -10,3 +10,5 @@ export { defenseProbabilities } from "./defense";
 export { baserunningProbabilities } from "./baserunning";
 
 export { stealingProbabilities } from "./stealing";
+
+export { pitcherFatigue, applyPitcherFatigue, pitcherFatigueState } from "./fatigue";

@@ -1,0 +1,44 @@
+{
+  "worldSeed": 786421,
+  "matchSeeds": "0..255",
+  "games": 256,
+  "teamGames": 512,
+  "runsPerTeam": 3.66796875,
+  "battingAverage": 0.24676440270301225,
+  "homeRunsPerTeam": 1.203125,
+  "walkRate": 0.08152879472399648,
+  "strikeoutRate": 0.20615879939762163,
+  "pitchesPerTeam": 152.736328125,
+  "draws": 6,
+  "extraInningGames": 17,
+  "doublePlays": 336,
+  "sacrificeFlies": 82,
+  "errors": 107,
+  "hitsPrevented": 96,
+  "earnedRuns": 1827,
+  "extraAdvanceAttempts": 747,
+  "extraAdvanceSuccesses": 644,
+  "baserunningOuts": 103,
+  "stealingAttempts": 339,
+  "stolenBases": 235,
+  "caughtStealing": 104,
+  "periods": {
+    "early": {
+      "plateAppearances": 13006,
+      "runs": 1283,
+      "walks": 1060,
+      "strikeouts": 2652,
+      "runsPerPlateAppearance": 0.09864677840996464,
+      "walkRate": 0.08150084576349377
+    },
+    "late": {
+      "plateAppearances": 6251,
+      "runs": 595,
+      "walks": 510,
+      "strikeouts": 1318,
+      "runsPerPlateAppearance": 0.09518477043673013,
+      "walkRate": 0.08158694608862582
+    }
+  },
+  "stealingSuccessRate": 0.6932153392330384
+}

@@ -121,3 +121,14 @@ export const stealingConfig = {
     throwing: -0.001, aptitude: -0.0008, third: -0.08, min: 0.20, max: 0.98 },
   interruptedPlateAppearancePitches: 1,
 } as const;
+
+/** Phase 3C-1暫定。保存fitnessとは独立した登板中の疲労。 */
+export const pitcherFatigueConfig = {
+  onsetBasePitches: 45,
+  onsetPerStamina: 0.65,
+  pitchesToFullFatigue: 60,
+  maxFatigue: 100,
+  stages: 4,
+  maxReduction: {velocityKmh: 4, control: 10, pitchPower: 8, pitchControl: 10},
+  minimumVelocityKmh: 1,
+} as const;

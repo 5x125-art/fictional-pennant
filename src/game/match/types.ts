@@ -67,11 +67,35 @@ export interface Situation {
   /** 次に打つ打者の0〜8インデックス。 */
   readonly nextBatterIndex: Readonly<Record<Side, number>>;
 }
+export interface PitcherFatigueLevel {
+  readonly pitches: number;
+  readonly stamina: number;
+  readonly onsetPitches: number;
+  readonly fatigue: number;
+  readonly stage: number;
+}
+export interface PitcherFatigueAdjustments {
+  /** 基礎能力から差し引く暫定量。下限到達時の実差分は有効能力と基礎能力で照合する。 */
+  readonly velocityKmh: number;
+  readonly control: number;
+  readonly pitchPower: number;
+  readonly pitchControl: number;
+}
+export interface PitcherFatigueState extends PitcherFatigueLevel {
+  readonly pitcherId: string;
+  readonly effectivePitcher: MatchPitcher;
+  readonly adjustments: PitcherFatigueAdjustments;
+}
+export interface PitcherFatigueLog {
+  readonly before: PitcherFatigueState;
+  readonly after: PitcherFatigueState;
+}
 export interface PlateAppearanceContext {
   readonly eventIndex: number;
   readonly battingOrderSlot: number;
   readonly batter: MatchBatter;
   readonly pitcher: MatchPitcher;
+  readonly pitcherFatigue: PitcherFatigueState;
   readonly before: Situation;
 }
 export interface PlateAppearanceEvent {
@@ -95,6 +119,7 @@ export interface PlateAppearanceEvent {
   readonly movements: readonly RunnerMovement[];
   readonly defense: DefenseEvent | null;
   readonly playSequence: readonly PlayMoment[];
+  readonly pitcherFatigue: PitcherFatigueLog;
 }
 export interface HalfInningResult {
   readonly inning: number;
@@ -121,7 +146,7 @@ export interface MatchPitchingStats extends PitchingStats {
 export type EndReason =
   "regulation" | "extraInnings" | "walkOff" | "twelveInningDraw";
 export interface MatchResult {
-  readonly engineVersion: 5;
+  readonly engineVersion: 6;
   readonly status: "completed";
   readonly awayTeamId: string;
   readonly homeTeamId: string;
@@ -133,6 +158,7 @@ export interface MatchResult {
   readonly halfInnings: readonly HalfInningResult[];
   readonly battingByPlayerId: Readonly<Record<string, MatchBattingStats>>;
   readonly pitchingByPlayerId: Readonly<Record<string, MatchPitchingStats>>;
+  readonly pitcherFatigueByPlayerId: Readonly<Record<string, PitcherFatigueState>>;
   /** 完了した打席だけ。従来のindexはこの配列内の番号を維持する。 */
   readonly events: readonly PlateAppearanceEvent[];
   readonly stealingEvents: readonly StealingEvent[];
@@ -246,6 +272,7 @@ export interface StealingEvent extends StealingContext {
   readonly movements: readonly RunnerMovement[];
   /** 完了打席の推定球数と重複しない追加分。第3アウトの盗塁死だけ1球。 */
   readonly estimatedPitches: number;
+  readonly pitcherFatigue: PitcherFatigueLog;
   readonly plateAppearanceCompleted: false;
   readonly endedHalfInning: boolean;
 }
