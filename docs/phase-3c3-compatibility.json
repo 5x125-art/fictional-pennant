@@ -1,0 +1,16 @@
+{
+  "baselineCommit": "b08583db088821498bfc17df897f3a0025a71231",
+  "baselineEngineVersion": 7,
+  "engineVersion": 8,
+  "games": 256,
+  "ignoredFields": [
+    "engineVersion",
+    "currentPitcher",
+    "currentAppearance",
+    "decisionSource",
+    "ai"
+  ],
+  "baselineBehaviorDigest": "d56b75b1f79fe52004da4ce311d7e72df809eef8e4aa4fab9222ffdfb234a707",
+  "disabledAIBehaviorDigest": "d56b75b1f79fe52004da4ce311d7e72df809eef8e4aa4fab9222ffdfb234a707",
+  "allGameHashesEqual": true
+}

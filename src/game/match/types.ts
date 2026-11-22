@@ -149,7 +149,7 @@ export interface MatchPitchingStats extends PitchingStats {
 export type EndReason =
   "regulation" | "extraInnings" | "walkOff" | "twelveInningDraw";
 export interface MatchResult {
-  readonly engineVersion: 7;
+  readonly engineVersion: 8;
   readonly status: "completed";
   readonly awayTeamId: string;
   readonly homeTeamId: string;
@@ -299,6 +299,8 @@ export interface PitchingChangeContext {
   readonly fieldingTeamId: string;
   readonly batter: MatchBatter;
   readonly currentPitcherId: string;
+  readonly currentPitcher: AvailablePitcher;
+  readonly currentAppearance: PitcherAppearance;
   readonly currentFatigue: PitcherFatigueState;
   readonly currentStats: MatchPitchingStats;
   readonly availablePitchers: readonly AvailablePitcher[];
@@ -315,7 +317,9 @@ export interface PitchingChangeEvent extends PitchingChangeContext {
   readonly outgoingPitcherId: string;
   readonly incomingPitcherId: string;
   readonly incomingFatigue: PitcherFatigueState;
-  readonly reason: "explicitInstruction";
+  readonly reason: "explicitInstruction" | AIPitchingChangeReason;
+  readonly decisionSource: "explicit" | "ai";
+  readonly ai?: AIPitchingAssessment;
   readonly estimatedPitches: 0;
   readonly outsRecorded: 0;
 }
@@ -333,7 +337,35 @@ export type MatchTimelineEntry =
   {readonly type: "plateAppearance"; readonly event: PlateAppearanceEvent} |
   {readonly type: "stealing"; readonly event: StealingEvent} |
   {readonly type: "pitchingChange"; readonly event: PitchingChangeEvent};
+export interface AIPitchingStrategy {
+  /** 試合計算だけの積極度0〜1。保存型・正式チーム設定には接続しない。 */
+  readonly aggression: number;
+}
+export type AIPitchingChangeReason = "autoFatigue" | "autoWorkload" | "autoEarlyExit" | "autoHighLeverage";
+export interface AIPitchingCandidateComparison {
+  readonly pitcherId: string;
+  readonly role: PitcherRole;
+  readonly ability: number;
+  readonly roleFit: number;
+  readonly staminaFit: number;
+  readonly handedness: number;
+  readonly total: number;
+}
+export interface AIPitchingAssessment {
+  readonly decision: PitchingChangeDecision;
+  readonly reason: AIPitchingChangeReason | "noCandidates" | "lowWorkload" | "reserveBullpen" | "protectShortStint";
+  readonly lead: number;
+  readonly close: boolean;
+  readonly extraInnings: boolean;
+  readonly aggression: number;
+  readonly pitchBudget: number;
+  readonly pressure: number;
+  readonly threshold: number;
+  readonly candidates: readonly AIPitchingCandidateComparison[];
+}
 export interface MatchOptions {
+  readonly autoPitching?: boolean;
+  readonly pitchingStrategy?: AIPitchingStrategy;
   readonly resolvePitchingChange?: (context: PitchingChangeContext) => PitchingChangeDecision;
   /** 各打席開始前に最大1回。候補外走者の指定・不明な結果は拒否する。 */
   readonly resolveStealing?: (context: StealingContext) => StealingDecision;

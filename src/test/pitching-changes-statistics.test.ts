@@ -24,7 +24,7 @@ it("同じベンチ・256シードで続投と明示継投シナリオを比較"
       const r=simulateMatch(input,{resolvePitchingChange});assertMatchAccounting(r);
       if(!useChanges){
         // 続投コールバック自体も乱数・結果を変えない。
-        const absent=simulateMatch(input);
+        const absent=simulateMatch(input,{autoPitching:false});
         expect(r).toEqual(absent);
       }
       runs+=r.score.away+r.score.home;extras+=Number(r.innings.length>9);draws+=Number(r.winnerTeamId===null);

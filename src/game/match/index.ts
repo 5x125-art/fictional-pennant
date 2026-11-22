@@ -12,3 +12,5 @@ export { baserunningProbabilities } from "./baserunning";
 export { stealingProbabilities } from "./stealing";
 
 export { pitcherFatigue, applyPitcherFatigue, pitcherFatigueState } from "./fatigue";
+
+export { chooseAIPitchingChange, assessAIPitchingChange } from "./aiPitching";

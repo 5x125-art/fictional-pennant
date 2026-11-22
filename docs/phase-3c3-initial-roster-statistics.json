@@ -1,0 +1,277 @@
+{
+  "worldSeed": 786421,
+  "matchSeeds": "0..255",
+  "none": {
+    "mode": "none",
+    "aggression": 0.5,
+    "games": 256,
+    "runsPerTeam": 3.794921875,
+    "battingAverage": 0.25031324752249684,
+    "homeRunsPerTeam": 1.201171875,
+    "walks": 1633,
+    "strikeouts": 3935,
+    "walkRate": 0.0840150228944796,
+    "strikeoutRate": 0.20244893759325,
+    "pitchersPerGame": 2,
+    "starterPitchesPerAppearance": 153.97265625,
+    "reliefPitchesPerAppearance": 0,
+    "pitchingChanges": 0,
+    "starterExitInnings": {
+      "completed": 512
+    },
+    "roleAppearances": {},
+    "roleMeanPitches": {},
+    "fatigueStages": {},
+    "leadBands": {},
+    "reasons": {},
+    "earlyClosers": 0,
+    "lateNoCandidatePlateAppearances": 0,
+    "extraNoCandidatePlateAppearances": 0,
+    "highFatigueContinuesWithCandidates": 2088,
+    "runnersAtChanges": 0,
+    "inheritedRunnersScored": 0,
+    "pitcherRunsAllowed": 1943,
+    "earnedRuns": 1884,
+    "extraInningGames": 23,
+    "draws": 4,
+    "behaviorDigest": "d56b75b1f79fe52004da4ce311d7e72df809eef8e4aa4fab9222ffdfb234a707"
+  },
+  "fixed": {
+    "mode": "fixed",
+    "aggression": 0.5,
+    "games": 256,
+    "runsPerTeam": 3.6796875,
+    "battingAverage": 0.247982391782832,
+    "homeRunsPerTeam": 1.21484375,
+    "walks": 1597,
+    "strikeouts": 3965,
+    "walkRate": 0.08167962356792144,
+    "strikeoutRate": 0.20279255319148937,
+    "pitchersPerGame": 6,
+    "starterPitchesPerAppearance": 85.703125,
+    "reliefPitchesPerAppearance": 34.64453125,
+    "pitchingChanges": 1024,
+    "starterExitInnings": {
+      "6": 512
+    },
+    "roleAppearances": {
+      "middle": 1024
+    },
+    "roleMeanPitches": {
+      "middle": 34.64453125
+    },
+    "fatigueStages": {
+      "0": 767,
+      "1": 161,
+      "2": 69,
+      "3": 25,
+      "4": 2
+    },
+    "leadBands": {
+      "lead1..4": 389,
+      "behind1..4": 365,
+      "lead5+": 69,
+      "tie": 148,
+      "behind5+": 53
+    },
+    "reasons": {
+      "explicitInstruction": 1024
+    },
+    "earlyClosers": 0,
+    "lateNoCandidatePlateAppearances": 0,
+    "extraNoCandidatePlateAppearances": 0,
+    "highFatigueContinuesWithCandidates": 0,
+    "runnersAtChanges": 266,
+    "inheritedRunnersScored": 68,
+    "pitcherRunsAllowed": 1884,
+    "earnedRuns": 1831,
+    "extraInningGames": 30,
+    "draws": 5,
+    "behaviorDigest": "cb8e1e9ab42a1f15017270b0f323ab2b34214b81504ed83472a6354457ef1334"
+  },
+  "standard": {
+    "mode": "ai",
+    "aggression": 0.5,
+    "games": 256,
+    "runsPerTeam": 3.482421875,
+    "battingAverage": 0.2421292342727014,
+    "homeRunsPerTeam": 1.138671875,
+    "walks": 1496,
+    "strikeouts": 4041,
+    "walkRate": 0.0776336274001038,
+    "strikeoutRate": 0.20970420342501297,
+    "pitchersPerGame": 5.06640625,
+    "starterPitchesPerAppearance": 92.384765625,
+    "reliefPitchesPerAppearance": 39.38726114649682,
+    "pitchingChanges": 785,
+    "starterExitInnings": {
+      "1": 6,
+      "2": 14,
+      "3": 20,
+      "4": 35,
+      "5": 56,
+      "6": 134,
+      "7": 204,
+      "8": 35,
+      "9": 5,
+      "completed": 3
+    },
+    "roleAppearances": {
+      "middle": 785
+    },
+    "roleMeanPitches": {
+      "middle": 39.38726114649682
+    },
+    "fatigueStages": {
+      "0": 338,
+      "1": 287,
+      "2": 160
+    },
+    "leadBands": {
+      "behind1..4": 308,
+      "lead1..4": 271,
+      "behind5+": 50,
+      "lead5+": 32,
+      "tie": 124
+    },
+    "reasons": {
+      "autoWorkload": 720,
+      "autoEarlyExit": 65
+    },
+    "earlyClosers": 0,
+    "lateNoCandidatePlateAppearances": 0,
+    "extraNoCandidatePlateAppearances": 0,
+    "highFatigueContinuesWithCandidates": 0,
+    "runnersAtChanges": 598,
+    "inheritedRunnersScored": 132,
+    "pitcherRunsAllowed": 1783,
+    "earnedRuns": 1738,
+    "extraInningGames": 28,
+    "draws": 10,
+    "behaviorDigest": "6a06ab557f5bd958008640b60f6b1e24c464ef95f784f273f0729745a3afe0ff"
+  },
+  "cautious": {
+    "mode": "ai",
+    "aggression": 0,
+    "games": 256,
+    "runsPerTeam": 3.50390625,
+    "battingAverage": 0.24217679305619005,
+    "homeRunsPerTeam": 1.158203125,
+    "walks": 1510,
+    "strikeouts": 4031,
+    "walkRate": 0.0784782495712281,
+    "strikeoutRate": 0.20950054570968246,
+    "pitchersPerGame": 4.66796875,
+    "starterPitchesPerAppearance": 98.0078125,
+    "reliefPitchesPerAppearance": 40.928257686676424,
+    "pitchingChanges": 683,
+    "starterExitInnings": {
+      "1": 6,
+      "2": 14,
+      "3": 19,
+      "4": 28,
+      "5": 39,
+      "6": 121,
+      "7": 183,
+      "8": 74,
+      "9": 22,
+      "completed": 6
+    },
+    "roleAppearances": {
+      "middle": 683
+    },
+    "roleMeanPitches": {
+      "middle": 40.928257686676424
+    },
+    "fatigueStages": {
+      "0": 239,
+      "1": 10,
+      "2": 415,
+      "3": 19
+    },
+    "leadBands": {
+      "behind1..4": 271,
+      "lead1..4": 234,
+      "behind5+": 44,
+      "lead5+": 30,
+      "tie": 104
+    },
+    "reasons": {
+      "autoWorkload": 598,
+      "autoEarlyExit": 66,
+      "autoFatigue": 19
+    },
+    "earlyClosers": 0,
+    "lateNoCandidatePlateAppearances": 0,
+    "extraNoCandidatePlateAppearances": 0,
+    "highFatigueContinuesWithCandidates": 0,
+    "runnersAtChanges": 497,
+    "inheritedRunnersScored": 120,
+    "pitcherRunsAllowed": 1794,
+    "earnedRuns": 1754,
+    "extraInningGames": 26,
+    "draws": 7,
+    "behaviorDigest": "2797cdf6e382507b54d513ad723bd2ba18b17885e1353ec0fc6fe0f8ab728544"
+  },
+  "aggressive": {
+    "mode": "ai",
+    "aggression": 1,
+    "games": 256,
+    "runsPerTeam": 3.533203125,
+    "battingAverage": 0.24085193157358106,
+    "homeRunsPerTeam": 1.13671875,
+    "walks": 1514,
+    "strikeouts": 4061,
+    "walkRate": 0.07806940648687671,
+    "strikeoutRate": 0.2094054555767545,
+    "pitchersPerGame": 6.1796875,
+    "starterPitchesPerAppearance": 84.724609375,
+    "reliefPitchesPerAppearance": 32.938317757009344,
+    "pitchingChanges": 1070,
+    "starterExitInnings": {
+      "1": 6,
+      "2": 14,
+      "3": 20,
+      "4": 49,
+      "5": 121,
+      "6": 179,
+      "7": 98,
+      "8": 22,
+      "9": 2,
+      "completed": 1
+    },
+    "roleAppearances": {
+      "middle": 1070
+    },
+    "roleMeanPitches": {
+      "middle": 32.938317757009344
+    },
+    "fatigueStages": {
+      "0": 626,
+      "1": 426,
+      "2": 18
+    },
+    "leadBands": {
+      "behind1..4": 419,
+      "lead1..4": 367,
+      "tie": 192,
+      "behind5+": 56,
+      "lead5+": 36
+    },
+    "reasons": {
+      "autoWorkload": 1007,
+      "autoEarlyExit": 63
+    },
+    "earlyClosers": 0,
+    "lateNoCandidatePlateAppearances": 0,
+    "extraNoCandidatePlateAppearances": 0,
+    "highFatigueContinuesWithCandidates": 0,
+    "runnersAtChanges": 874,
+    "inheritedRunnersScored": 209,
+    "pitcherRunsAllowed": 1809,
+    "earnedRuns": 1757,
+    "extraInningGames": 36,
+    "draws": 8,
+    "behaviorDigest": "62e359e916504680ceb49dd46dfec3a60dd6fcd699942052e9be3eabe1592625"
+  }
+}

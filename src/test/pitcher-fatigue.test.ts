@@ -139,7 +139,7 @@ it("元の能力・fitness・セーブ・正式PRNGを維持し、同シード�
   const before=JSON.stringify(matchFixtureWorld),source=JSON.stringify(input);
   const spy=vi.spyOn(Math,"random").mockImplementation(()=>{throw Error("禁止");});
   try {
-    const a=simulateMatch(input);expect(simulateMatch(input)).toEqual(a);expect(a.engineVersion).toBe(7);
+    const a=simulateMatch(input);expect(simulateMatch(input)).toEqual(a);expect(a.engineVersion).toBe(8);
     expect(JSON.stringify(input)).toBe(source);expect(JSON.stringify(matchFixtureWorld)).toBe(before);
     expect(JSON.stringify(a)).not.toMatch(/growthType|abilityCaps|developmentByPlayerId|fitness/);
     assertMatchAccounting(a);
