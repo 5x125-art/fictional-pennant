@@ -1,0 +1,17 @@
+{
+  "baselineCommit": "ac9ae6da67a195370e59e844241eeea0e5ac97cc",
+  "baselineEngineVersion": 6,
+  "engineVersion": 7,
+  "games": 256,
+  "ignoredAdditiveFields": [
+    "engineVersion",
+    "pitchingChanges",
+    "pitcherAppearances",
+    "pitchingDecision",
+    "scoredRuns",
+    "responsibilities"
+  ],
+  "baselineHashListSha256": "32fff174d2bd7d05b960ebbabc9a8314303b953bcd4d1ed43ae5a614da2db9f4",
+  "currentHashListSha256": "32fff174d2bd7d05b960ebbabc9a8314303b953bcd4d1ed43ae5a614da2db9f4",
+  "allGameHashesEqual": true
+}
