@@ -34,7 +34,6 @@ it("同じベンチ・256シードで続投と明示継投シナリオを比較"
       const inheritedTokens=new Set<string>();
       for(const c of r.pitchingChanges){inherited+=c.responsibilities.length;for(const runner of c.responsibilities)inheritedTokens.add(runner.token);}
       inheritedScored+=r.events.flatMap(e=>e.scoredRuns).filter(run=>inheritedTokens.has(run.token)).length;
-      if(useChanges)expect(r.pitchingDecision.status).toBe("unadjudicated");
     }
     expect(JSON.stringify(matchFixtureWorld)).toBe(before);expect(pitcherRuns).toBe(runs);
     return {games:256,teamGames:512,runsPerTeam:runs/512,battingAverage:hits/atBats,homeRunsPerTeam:homeRuns/512,walks,strikeouts,walkRate:walks/pa,strikeoutRate:strikeouts/pa,

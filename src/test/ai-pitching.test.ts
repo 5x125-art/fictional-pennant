@@ -110,7 +110,7 @@ it("候補不足でも12回まで完了し、再登板・無限交代・不正�
 it("同一シード完全再現、選手・fitness・保存世界・正式乱数の非変更",()=>{
   const input=aiPitchingFixture(),before=JSON.stringify(input),world=JSON.stringify(matchFixtureWorld);
   const spy=vi.spyOn(Math,"random").mockImplementation(()=>{throw Error("禁止");});
-  try{const a=simulateMatch(input);expect(simulateMatch(input)).toEqual(a);expect(a.engineVersion).toBe(8);expect(JSON.stringify(input)).toBe(before);expect(JSON.stringify(matchFixtureWorld)).toBe(world);expect(JSON.stringify(a)).not.toMatch(/growthType|abilityCaps|developmentByPlayerId|fitness/);assertMatchAccounting(a);}finally{spy.mockRestore();}
+  try{const a=simulateMatch(input);expect(simulateMatch(input)).toEqual(a);expect(a.engineVersion).toBe(9);expect(JSON.stringify(input)).toBe(before);expect(JSON.stringify(matchFixtureWorld)).toBe(world);expect(JSON.stringify(a)).not.toMatch(/growthType|abilityCaps|developmentByPlayerId|fitness/);assertMatchAccounting(a);}finally{spy.mockRestore();}
 });
 it("能力の高い抑えを中盤には温存し、終盤接戦で選べる",()=>{
   const middle={...p,id:"middle",role:"middle" as const};

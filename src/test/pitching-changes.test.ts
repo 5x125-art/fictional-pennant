@@ -131,23 +131,22 @@ it("未登板投手には成績を作らず、続投判断はイベントを増�
 it("投球前の即時交代でも先発・救援の登板記録と球数0を保持",()=>{
   const r=game({},changeAt(0));expect(r.pitchingByPlayerId[input.home.startingPitcherId]).toMatchObject({games:1,starts:1,outs:0,pitches:0});assertMatchAccounting(r);
 });
-it("複数投手時の個人勝敗は未裁定、完投時は既存の勝敗を維持",()=>{
-  const multi=game({"1-top":["homeRun"]},changeAt(1));expect(multi.winnerTeamId).toBe(input.away.teamId);expect(multi.pitchingDecision.status).toBe("unadjudicated");
-  for(const p of Object.values(multi.pitchingByPlayerId))expect(p.wins+p.losses+p.saves+p.holds).toBe(0);
-  const complete=game({"1-top":["homeRun"]},()=>stay);expect(complete.pitchingDecision.status).toBe("completeGame");expect(complete.pitchingByPlayerId[input.away.startingPitcherId].wins).toBe(1);expect(complete.pitchingByPlayerId[input.home.startingPitcherId].losses).toBe(1);assertMatchAccounting(multi);assertMatchAccounting(complete);
+it("複数投手時も個人勝敗を裁定し、完投時は既存の勝敗を維持",()=>{
+  const multi=game({"1-top":["homeRun"]},changeAt(1));expect(multi.winnerTeamId).toBe(input.away.teamId);expect(multi.pitchingDecision).toMatchObject({status:"adjudicated", winPitcherId:input.away.startingPitcherId, lossPitcherId:input.home.startingPitcherId});
+  const complete=game({"1-top":["homeRun"]},()=>stay);expect(complete.pitchingDecision.status).toBe("adjudicated");expect(complete.pitchingByPlayerId[input.away.startingPitcherId].wins).toBe(1);expect(complete.pitchingByPlayerId[input.home.startingPitcherId].losses).toBe(1);assertMatchAccounting(multi);assertMatchAccounting(complete);
 });
 it.each([9,10,12])("%i回裏の走者あり交代・サヨナラを処理し、その後の交代はしない",inning=>{
   const callback=vi.fn<Change>(c=>c.before.inning===inning&&c.before.half==="bottom"&&c.responsibilities.length?{action:"change",pitcherId:c.availablePitchers[0].id}:stay);
   const r=game({[`${inning}-bottom`]:["walk","homeRun"]},callback);expect(r.endReason).toBe("walkOff");expect(r.pitchingChanges).toHaveLength(1);expect(r.timeline.at(-1)?.type).toBe("plateAppearance");assertMatchAccounting(r);
 });
-it("延長12回の交代後も引き分けと未裁定を維持",()=>{
-  const r=game({},c=>c.before.inning===12&&c.before.half==="top"&&c.availablePitchers.length?{action:"change",pitcherId:c.availablePitchers[0].id}:stay);expect(r.endReason).toBe("twelveInningDraw");expect(r.pitchingDecision.status).toBe("unadjudicated");assertMatchAccounting(r);
+it("延長12回の交代後も引き分けを裁定",()=>{
+  const r=game({},c=>c.before.inning===12&&c.before.half==="top"&&c.availablePitchers.length?{action:"change",pitcherId:c.availablePitchers[0].id}:stay);expect(r.endReason).toBe("twelveInningDraw");expect(r.pitchingDecision.status).toBe("draw");assertMatchAccounting(r);
 });
 it("同シード・決定的継投の完全再現、選手・セーブ・正式乱数の非変更",()=>{
   const before=JSON.stringify(matchFixtureWorld),source=JSON.stringify(input);
   const change:Change=c=>c.currentFatigue.pitches>=60&&c.availablePitchers.length?{action:"change",pitcherId:c.availablePitchers[0].id}:stay;
   const spy=vi.spyOn(Math,"random").mockImplementation(()=>{throw Error("禁止");});
-  try{const a=simulateMatch(input,{resolvePitchingChange:change});expect(simulateMatch(input,{resolvePitchingChange:change})).toEqual(a);expect(a.engineVersion).toBe(8);expect(a.pitchingChanges.length).toBeGreaterThan(0);expect(JSON.stringify(a)).not.toMatch(/growthType|abilityCaps|developmentByPlayerId|fitness/);expect(JSON.stringify(input)).toBe(source);expect(JSON.stringify(matchFixtureWorld)).toBe(before);assertMatchAccounting(a);}finally{spy.mockRestore();}
+  try{const a=simulateMatch(input,{resolvePitchingChange:change});expect(simulateMatch(input,{resolvePitchingChange:change})).toEqual(a);expect(a.engineVersion).toBe(9);expect(a.pitchingChanges.length).toBeGreaterThan(0);expect(JSON.stringify(a)).not.toMatch(/growthType|abilityCaps|developmentByPlayerId|fitness/);expect(JSON.stringify(input)).toBe(source);expect(JSON.stringify(matchFixtureWorld)).toBe(before);assertMatchAccounting(a);}finally{spy.mockRestore();}
 });
 
 it("当日ベンチそのものが未登録・育成・他球団選手を含む場合は開始前に拒否",()=>{
