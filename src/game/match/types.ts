@@ -168,6 +168,8 @@ export interface PitchingDecision {
       readonly outs: number;
       readonly runsAllowed: number;
       readonly earnedRuns: number;
+      /** 登板中に相手が挙げた得点。引継ぎ走者も含む。 */
+      readonly runsWhilePitching: number;
     }[];
   } | null;
 }

@@ -43,12 +43,18 @@ it("15アウトで先発の勝利、12アウトでは救援の勝利", () => {
   }
 });
 
-it("早期降板時に複数救援を比較し、暫定理由と比較根拠を保持する", () => {
-  const r = game({"1-top": [hr]}, c => at(2, "bottom")(c) || at(8, "bottom")(c));
+it.each([2, 3])("早期降板後の救援2人の投球回数差が %i アウトの場合", boundary => {
+  const r = game({"1-top": [hr, hr, hr, hr], "5-bottom": boundary === 3 ? [hr, hr] : [outs, hr, hr]}, c =>
+    c.before.bases.every(base => base === null) && (
+      (c.currentStats.starts === 1 && at(5, "bottom", 3 - boundary)(c)) ||
+      (c.currentAppearance.entry?.inning === 5 && at(8, "bottom")(c))));
   const [long, short] = r.pitchingChanges.map(c => c.incomingPitcherId);
-  expect(r.pitchingDecision).toMatchObject({
-    status: "provisional", winPitcherId: long, savePitcherId: short,
-    judgment: {reason: "shortStarter", candidates: [{pitcherId: long, outs: 18}, {pitcherId: short, outs: 6}]},
+  expect(r.pitchingByPlayerId[long].outs - r.pitchingByPlayerId[short].outs).toBe(boundary);
+  expect(r.pitchingDecision).toMatchObject(boundary === 3 ? {
+    status: "adjudicated", reason: "reliefOutsAdvantage", winPitcherId: long, judgment: null,
+  } : {
+    status: "provisional", winPitcherId: short,
+    judgment: {reason: "shortStarter", candidates: [{pitcherId: short, outs: 6}, {pitcherId: long, outs: 8}]},
   });
 });
 
@@ -63,14 +69,16 @@ it("同点で先発の勝利権利を取り消し、再逆転の救援に勝敗�
     e.before.inning === 7 && e.before.half === "top" && e.after.score.away === 3)?.batterId);
 });
 
-it("短時間かつ失点した投手を後続の有効な救援に代える暫定裁定", () => {
+it.each([2, 3])("失点した救援の投球回数が %i アウトの場合の勝利裁定", recordedOuts => {
   const r = game({"7-top": [hr, hr], "7-bottom": [hr]}, c =>
-    (at(6, "bottom", 2)(c) && c.currentStats.starts === 1) ||
+    (at(6, "bottom", 4 - recordedOuts)(c) && c.currentStats.starts === 1) ||
     (at(7, "bottom", 1)(c) && c.currentStats.runsAllowed === 1));
-  expect(r.pitchingDecision).toMatchObject({
-    status: "provisional", winPitcherId: r.pitchingChanges[1].incomingPitcherId,
+  const [first, later] = r.pitchingChanges.map(c => c.incomingPitcherId);
+  expect(r.pitchingByPlayerId[first].outs).toBe(recordedOuts);
+  expect(r.pitchingDecision).toMatchObject(recordedOuts < 3 ? {
+    status: "provisional", winPitcherId: later,
     judgment: {reason: "briefIneffectiveRelief"},
-  });
+  } : {status: "adjudicated", winPitcherId: first, judgment: null});
 });
 
 it.each([9, 10, 11, 12])("%i回のサヨナラで二人目の生還が決勝点となり、降板した責任投手が敗戦", inning => {
@@ -114,10 +122,10 @@ it("リードでの登板・降板、0アウトの降板、引き分け時の最
     at(7, "top")(c) && (c.currentStats.starts === 1 || c.before.bases.some(Boolean)));
   expect(zero.pitchingByPlayerId[zero.pitchingChanges[0].incomingPitcherId].outs).toBe(0);
   expect(zero.pitchingDecision.holdPitcherIds).toEqual([]);
-  const draw = game({}, c => at(9, "top")(c) || at(10, "bottom")(c));
+  const draw = game({}, c => at(9, "top")(c) || at(10, "bottom")(c) || at(11, "top")(c));
   expect(draw.pitchingDecision).toMatchObject({
     status: "draw", winPitcherId: null, lossPitcherId: null, savePitcherId: null,
-    holdPitcherIds: draw.pitchingChanges.map(c => c.incomingPitcherId),
+    holdPitcherIds: [draw.pitchingChanges[0].incomingPitcherId],
   });
 });
 
@@ -176,4 +184,39 @@ it("リードを失った救援には、味方が登板中に再勝ち越しし�
   expect(r.pitchingChanges[1].before.score).toEqual({away: 1, home: 2});
   expect(r.pitchingDecision.winPitcherId).toBe(r.pitchingChanges[1].incomingPitcherId);
   expect(r.pitchingDecision.holdPitcherIds).toEqual([]);
+});
+
+it("登板中に前任者の走者が生還した短い救援は、責任失点0でも暫定裁定の対象になる", () => {
+  const r = game({"6-bottom": [outs, outs, "triple", "single"],
+    "7-top": [hr, hr]}, c =>
+    (at(6, "bottom", 2)(c) && c.before.bases[2] !== null) || at(7, "bottom")(c));
+  const [first, later] = r.pitchingChanges.map(c => c.incomingPitcherId);
+  expect(r.pitchingByPlayerId[first]).toMatchObject({outs: 1, runsAllowed: 0});
+  expect(r.pitchingByPlayerId[away.startingPitcherId].runsAllowed).toBe(1);
+  expect(r.pitchingDecision).toMatchObject({
+    status: "provisional", winPitcherId: later,
+    judgment: {reason: "briefIneffectiveRelief", candidates: [
+      {pitcherId: first, runsWhilePitching: 1, runsAllowed: 0}, {pitcherId: later, runsWhilePitching: 0},
+    ]},
+  });
+});
+
+it.each([
+  {beforeLead: false, inheritedTie: false, holds: 1},
+  {beforeLead: false, inheritedTie: true, holds: 0},
+  {beforeLead: true, inheritedTie: false, holds: 0},
+])("同点登板後の失点順と降板後の生還でホールドを判定する %j", ({beforeLead, inheritedTie, holds}) => {
+  const r = game({
+    "7-top": beforeLead ? [hr] : [],
+    "7-bottom": [hr, hr],
+    "8-top": inheritedTie ? [hr, outs, "triple", "single"] : beforeLead ? [] : [hr],
+    "9-top": inheritedTie ? [] : [hr],
+  }, c => (at(7, "top")(c) && c.currentStats.starts === 1) ||
+    (inheritedTie ? at(8, "top", 1)(c) && c.before.bases[2] !== null && c.currentAppearance.entry?.inning === 7
+      : at(9, "top")(c) && c.currentAppearance.entry?.inning === 7));
+  const id = r.pitchingChanges[0].incomingPitcherId;
+  expect(r.pitchingChanges[0].before.score).toEqual({away: 0, home: 0});
+  expect(r.pitchingChanges[1].before.score).toEqual({away: 1, home: 2});
+  expect(r.pitchingDecision.status).toBe("draw");
+  expect(r.pitchingByPlayerId[id]).toMatchObject({runsAllowed: inheritedTie ? 2 : 1, holds});
 });

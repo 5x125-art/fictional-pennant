@@ -53,7 +53,7 @@
       "starterLosses": 152,
       "reliefLosses": 99,
       "saves": 123,
-      "holds": 159,
+      "holds": 151,
       "provisional": 0,
       "unadjudicated": 0,
       "pitcherWins": 251,
@@ -74,7 +74,7 @@
         "starterLosses": 0,
         "reliefLosses": 25,
         "saves": 0,
-        "holds": 28,
+        "holds": 20,
         "provisional": 0,
         "unadjudicated": 0
       },
@@ -90,9 +90,9 @@
       "reliefWins": 95,
       "starterLosses": 163,
       "reliefLosses": 88,
-      "saves": 151,
-      "holds": 103,
-      "provisional": 11,
+      "saves": 152,
+      "holds": 92,
+      "provisional": 6,
       "unadjudicated": 0,
       "pitcherWins": 251,
       "pitcherLosses": 251,
@@ -101,7 +101,7 @@
       "pitchingAppearances": 1371,
       "pitchersPerGame": 5.35546875,
       "provisionalReasons": {
-        "shortStarter": 11
+        "shortStarter": 6
       },
       "unadjudicatedReasons": {},
       "extraInnings": {
@@ -114,7 +114,7 @@
         "starterLosses": 0,
         "reliefLosses": 27,
         "saves": 4,
-        "holds": 41,
+        "holds": 31,
         "provisional": 0,
         "unadjudicated": 0
       },
@@ -130,9 +130,9 @@
       "reliefWins": 84,
       "starterLosses": 174,
       "reliefLosses": 72,
-      "saves": 137,
-      "holds": 48,
-      "provisional": 5,
+      "saves": 138,
+      "holds": 27,
+      "provisional": 1,
       "unadjudicated": 0,
       "pitcherWins": 246,
       "pitcherLosses": 246,
@@ -141,7 +141,7 @@
       "pitchingAppearances": 1223,
       "pitchersPerGame": 4.77734375,
       "provisionalReasons": {
-        "shortStarter": 5
+        "shortStarter": 1
       },
       "unadjudicatedReasons": {},
       "extraInnings": {
@@ -154,7 +154,7 @@
         "starterLosses": 0,
         "reliefLosses": 20,
         "saves": 6,
-        "holds": 31,
+        "holds": 11,
         "provisional": 0,
         "unadjudicated": 0
       },
@@ -171,8 +171,8 @@
       "starterLosses": 164,
       "reliefLosses": 80,
       "saves": 156,
-      "holds": 218,
-      "provisional": 35,
+      "holds": 195,
+      "provisional": 11,
       "unadjudicated": 0,
       "pitcherWins": 244,
       "pitcherLosses": 244,
@@ -181,7 +181,7 @@
       "pitchingAppearances": 1659,
       "pitchersPerGame": 6.48046875,
       "provisionalReasons": {
-        "shortStarter": 35
+        "shortStarter": 11
       },
       "unadjudicatedReasons": {},
       "extraInnings": {
@@ -194,7 +194,7 @@
         "starterLosses": 0,
         "reliefLosses": 20,
         "saves": 7,
-        "holds": 83,
+        "holds": 59,
         "provisional": 0,
         "unadjudicated": 0
       },

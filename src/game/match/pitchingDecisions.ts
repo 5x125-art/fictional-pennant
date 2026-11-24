@@ -34,6 +34,7 @@ export function adjudicatePitchingDecisions(input: DecisionInput): PitchingDecis
   const active = {away: awayStarter.pitcherId, home: homeStarter.pitcherId};
   let decisiveRun: PitchingDecision["decisiveRun"] = null;
   const runs: Array<{side: Side; margin: number; index: number; runner: RunnerResponsibility}> = [];
+  const runsWhilePitching = new Map<string, number>();
   const appearancesById = new Map(pitcherAppearances.map(a => [a.pitcherId, a]));
   const replayed = {away: 0, home: 0};
 
@@ -53,6 +54,10 @@ export function adjudicatePitchingDecisions(input: DecisionInput): PitchingDecis
           event.after.score[side] - replayed[side] !== event.scoredRuns.length ||
           event.after.score[fielding] !== replayed[fielding] ||
           active[fielding] !== event.pitcherId) return unresolved("inconsistentScoringTimeline");
+      if (event.scoredRuns.length) {
+        const pitcherId = event.pitcherId;
+        runsWhilePitching.set(pitcherId, (runsWhilePitching.get(pitcherId) ?? 0) + event.scoredRuns.length);
+      }
       for (const [runIndex, runner] of event.scoredRuns.entries()) {
         const margin = ++replayed[side] - replayed[fielding];
         runs.push({side, margin, index, runner});
@@ -71,6 +76,7 @@ export function adjudicatePitchingDecisions(input: DecisionInput): PitchingDecis
   let lossPitcherId: string | null = null;
   let savePitcherId: string | null = null;
   let judgment: PitchingDecision["judgment"] = null;
+  let ruleReason: string | undefined;
 
   if (winner) {
     const winnerAppearances = pitcherAppearances.filter(a => a.teamId === teams[winner]);
@@ -84,26 +90,31 @@ export function adjudicatePitchingDecisions(input: DecisionInput): PitchingDecis
     const candidateStats = stats[candidate.pitcherId];
     const relief = winnerAppearances.filter(a => !a.starter &&
       (stats[a.pitcherId].pitches > 0 || stats[a.pitcherId].outs > 0));
+    const reliefLine = (pitcherId: string) => ({
+      pitcherId, outs: stats[pitcherId].outs, runsAllowed: stats[pitcherId].runsAllowed,
+      earnedRuns: stats[pitcherId].earnedRuns, runsWhilePitching: runsWhilePitching.get(pitcherId) ?? 0,
+    });
     if (candidate.starter && candidateStats.outs < starterWinOuts) {
-      const ranked = relief.map(({pitcherId}) => ({
-        pitcherId, outs: stats[pitcherId].outs, runsAllowed: stats[pitcherId].runsAllowed,
-        earnedRuns: stats[pitcherId].earnedRuns,
-      }));
-      const effectiveness = (line: typeof ranked[number]) => line.outs - judgmentRules.outsPenaltyPerRun * line.runsAllowed;
-      ranked.sort((a, b) => effectiveness(b) - effectiveness(a) ||
-        a.earnedRuns - b.earnedRuns || b.outs - a.outs);
-      if (!ranked.length) return unresolved("noEligibleRelieverForShortStarter");
-      winPitcherId = ranked[0].pitcherId;
-      if (ranked.length > 1) judgment = {reason: "shortStarter", candidates: ranked};
-    } else if (!candidate.starter && candidateStats.outs <= judgmentRules.briefReliefMaxOuts && candidateStats.runsAllowed > 0) {
+      const ranked = relief.map(({pitcherId}) => reliefLine(pitcherId));
+      const [longest, nextLongest] = [...ranked].sort((a, b) => b.outs - a.outs);
+      if (!longest) return unresolved("noEligibleRelieverForShortStarter");
+      if (!nextLongest || longest.outs - nextLongest.outs >= outsPerInning) {
+        winPitcherId = longest.pitcherId;
+        ruleReason = nextLongest ? "reliefOutsAdvantage" : "soleEligibleReliever";
+      } else {
+        const effectiveness = (line: typeof ranked[number]) => line.outs - judgmentRules.outsPenaltyPerRun * line.runsAllowed;
+        ranked.sort((a, b) => effectiveness(b) - effectiveness(a) ||
+          a.earnedRuns - b.earnedRuns || b.outs - a.outs);
+        winPitcherId = ranked[0].pitcherId;
+        judgment = {reason: "shortStarter", candidates: ranked};
+      }
+    } else if (!candidate.starter && candidateStats.outs < outsPerInning &&
+        (runsWhilePitching.get(candidate.pitcherId) ?? 0) > 0) {
       const later = relief.slice(relief.indexOf(candidate) + 1).filter(a =>
         stats[a.pitcherId].outs >= judgmentRules.effectiveReliefMinOuts && stats[a.pitcherId].runsAllowed === 0);
       if (later.length) {
         winPitcherId = later[0].pitcherId;
-        judgment = {reason: "briefIneffectiveRelief", candidates: [candidate, ...later].map(({pitcherId}) => ({
-          pitcherId, outs: stats[pitcherId].outs, runsAllowed: stats[pitcherId].runsAllowed,
-          earnedRuns: stats[pitcherId].earnedRuns,
-        }))};
+        judgment = {reason: "briefIneffectiveRelief", candidates: [candidate, ...later].map(a => reliefLine(a.pitcherId))};
       }
     }
 
@@ -119,23 +130,23 @@ export function adjudicatePitchingDecisions(input: DecisionInput): PitchingDecis
     const {pitcherId, entry, exit, entryTimelineIndex, exitTimelineIndex} = a;
     const outs = stats[pitcherId].outs;
     if (a.starter || !entry || entryTimelineIndex === null || outs === 0 ||
-        (!exit && winner !== null) || [winPitcherId, lossPitcherId, savePitcherId].includes(pitcherId)) return false;
+        !exit || exitTimelineIndex === null || [winPitcherId, lossPitcherId, savePitcherId].includes(pitcherId)) return false;
     const side = a.teamId === teams.away ? "away" : "home";
     const entryLead = lead(entry, side);
-    const exitIndex = exitTimelineIndex ?? timeline.length;
     const opponentRuns = runs.filter(run => run.side !== side && run.index > entryTimelineIndex);
+    const lostLead = opponentRuns.some(run => run.margin >= 0 && run.index < exitTimelineIndex);
+    const leadLostAfterExit = opponentRuns.some(run => run.index >= exitTimelineIndex &&
+      run.margin >= 0 && run.margin <= 1 && run.runner.responsiblePitcherId === pitcherId);
+    if (lostLead || leadLostAfterExit) return false;
     if (entryLead === 0) {
-      return stats[pitcherId].runsAllowed === 0 &&
-        !opponentRuns.some(run => run.index < exitIndex);
+      return lead(exit, side) > 0 || stats[pitcherId].runsAllowed === 0;
     }
-    return reliefLeadQualifies(entry, side, outs) && lead(exit ?? {score}, side) > 0 &&
-      !opponentRuns.some(run => run.margin >= 0 &&
-        (run.index < exitIndex || (run.margin <= 1 && run.runner.responsiblePitcherId === pitcherId)));
+    return reliefLeadQualifies(entry, side, outs) && lead(exit, side) > 0;
   }).map(a => a.pitcherId);
 
   return {
     status: winner ? judgment ? "provisional" : "adjudicated" : "draw",
-    reason: judgment?.reason ?? (winner ? "decisiveLead" : "tiedFinalScore"),
+    reason: judgment?.reason ?? ruleReason ?? (winner ? "decisiveLead" : "tiedFinalScore"),
     winPitcherId, lossPitcherId, savePitcherId, holdPitcherIds, judgment, decisiveRun,
   };
 }
