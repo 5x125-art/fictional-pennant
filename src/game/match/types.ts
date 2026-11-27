@@ -148,8 +148,33 @@ export interface MatchPitchingStats extends PitchingStats {
 }
 export type EndReason =
   "regulation" | "extraInnings" | "walkOff" | "twelveInningDraw";
+export interface PitchingDecision {
+  readonly status: "adjudicated" | "draw" | "provisional" | "unadjudicated";
+  readonly reason: string;
+  readonly winPitcherId: string | null;
+  readonly lossPitcherId: string | null;
+  readonly savePitcherId: string | null;
+  readonly holdPitcherIds: readonly string[];
+  readonly decisiveRun: {
+    readonly eventIndex: number;
+    readonly runIndex: number;
+    readonly runner: RunnerResponsibility;
+    readonly pitcherOfRecordId: string;
+  } | null;
+  readonly judgment: {
+    readonly reason: "shortStarter" | "briefIneffectiveRelief";
+    readonly candidates: readonly {
+      readonly pitcherId: string;
+      readonly outs: number;
+      readonly runsAllowed: number;
+      readonly earnedRuns: number;
+      /** 登板中に相手が挙げた得点。引継ぎ走者も含む。 */
+      readonly runsWhilePitching: number;
+    }[];
+  } | null;
+}
 export interface MatchResult {
-  readonly engineVersion: 8;
+  readonly engineVersion: 9;
   readonly status: "completed";
   readonly awayTeamId: string;
   readonly homeTeamId: string;
@@ -168,7 +193,7 @@ export interface MatchResult {
   readonly timeline: readonly MatchTimelineEntry[];
   readonly pitchingChanges: readonly PitchingChangeEvent[];
   readonly pitcherAppearances: readonly PitcherAppearance[];
-  readonly pitchingDecision: {readonly status: "completeGame" | "draw" | "unadjudicated"; readonly reason?: "multiplePitchers"};
+  readonly pitchingDecision: PitchingDecision;
   readonly fieldingByPlayerId: Readonly<Record<string, MatchFieldingStats>>;
   readonly earnedRunMethod: "reconstructedInningApproximation";
   readonly finalState: Situation;

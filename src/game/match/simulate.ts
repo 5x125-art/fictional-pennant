@@ -12,6 +12,7 @@ import { stealingCandidates, resolveStealing, applyStealing } from "./stealing";
 import { EarnedRunReconstruction } from "./earnedRuns";
 import { assessAIPitchingChange, validateAIPitchingStrategy } from "./aiPitching";
 import { availablePitcher, resolvePitchingChange } from "./pitchingChanges";
+import { adjudicatePitchingDecisions } from "./pitchingDecisions";
 import { pitcherFatigueState } from "./fatigue";
 import { drawPlateAppearance } from "./probability";
 import { advanceRunners, isHit } from "./runners";
@@ -196,14 +197,17 @@ export function simulateMatch(
         : score.away > score.home
           ? "away"
           : "home";
-    const multiplePitchers = pitchingChanges.length > 0;
-    if (winner && !multiplePitchers) {
-      const loser = winner === "away" ? "home" : "away";
-      pitching[pitchers[winner].id].wins = 1;
-      pitching[pitchers[loser].id].losses = 1;
-    }
+    const pitchingDecision = adjudicatePitchingDecisions({
+      score, awayTeamId: teams.away.teamId, homeTeamId: teams.home.teamId,
+      timeline, pitcherAppearances, pitchingByPlayerId: pitching,
+    });
+    const {winPitcherId, lossPitcherId, savePitcherId, holdPitcherIds} = pitchingDecision;
+    if (winPitcherId) pitching[winPitcherId].wins = 1;
+    if (lossPitcherId) pitching[lossPitcherId].losses = 1;
+    if (savePitcherId) pitching[savePitcherId].saves = 1;
+    for (const id of holdPitcherIds) pitching[id].holds = 1;
     return {
-      engineVersion: 8,
+      engineVersion: 9,
       status: "completed",
       awayTeamId: teams.away.teamId,
       homeTeamId: teams.home.teamId,
@@ -220,7 +224,7 @@ export function simulateMatch(
       timeline,
       pitchingChanges,
       pitcherAppearances,
-      pitchingDecision: multiplePitchers ? {status:"unadjudicated",reason:"multiplePitchers"} : {status:winner ? "completeGame" : "draw"},
+      pitchingDecision,
       fieldingByPlayerId: fieldingStats,
       earnedRunMethod: "reconstructedInningApproximation",
       finalState,

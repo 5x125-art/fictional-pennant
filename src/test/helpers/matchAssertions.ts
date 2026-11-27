@@ -142,9 +142,25 @@ export function assertMatchAccounting(result: MatchResult) {
   expect(new Set(result.pitcherAppearances.map(a => a.pitcherId)).size).toBe(result.pitcherAppearances.length);
   expect(Object.keys(result.pitchingByPlayerId).sort()).toEqual(result.pitcherAppearances.map(a => a.pitcherId).sort());
   expect(result.timeline.filter(e => e.type === "pitchingChange").map(e => e.event)).toEqual(result.pitchingChanges);
-  if (result.pitchingChanges.length) {
-    expect(result.pitchingDecision.status).toBe("unadjudicated");
-    for (const p of Object.values(result.pitchingByPlayerId)) expect(p.wins+p.losses+p.saves+p.holds).toBe(0);
+  const {status, winPitcherId, lossPitcherId, savePitcherId, holdPitcherIds} = result.pitchingDecision;
+  expect(status).not.toBe("unadjudicated");
+  const ids = [winPitcherId, lossPitcherId, savePitcherId, ...holdPitcherIds].filter(Boolean);
+  expect(new Set(ids).size).toBe(ids.length);
+  expect(Boolean(winPitcherId)).toBe(result.winnerTeamId !== null);
+  expect(Boolean(lossPitcherId)).toBe(result.winnerTeamId !== null);
+  for (const appearance of result.pitcherAppearances) {
+    const {pitcherId, teamId, starter} = appearance;
+    const stats = result.pitchingByPlayerId[pitcherId];
+    expect(stats.wins).toBe(Number(pitcherId === winPitcherId));
+    expect(stats.losses).toBe(Number(pitcherId === lossPitcherId));
+    expect(stats.saves).toBe(Number(pitcherId === savePitcherId));
+    expect(stats.holds).toBe(Number(holdPitcherIds.includes(pitcherId)));
+    if (stats.wins || stats.saves) expect(teamId).toBe(result.winnerTeamId);
+    if (stats.losses) expect(teamId).not.toBe(result.winnerTeamId);
+    if (stats.saves || stats.holds) {
+      expect(starter).toBe(false);
+      expect(stats.outs).toBeGreaterThan(0);
+    }
   }
   for (const event of result.events) {
     expect(event.scoredRuns.map(r => r.playerId)).toEqual(event.scoredPlayerIds);

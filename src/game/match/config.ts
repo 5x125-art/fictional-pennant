@@ -7,6 +7,11 @@ export const matchRules = {
   outsPerHalf: 3,
   batters: 9,
 } as const;
+/** 公式記録員の裁量を代替する Phase 3C-4 の暫定基準。 */
+export const pitchingDecisionJudgment = {
+  outsPenaltyPerRun: 3,
+  effectiveReliefMinOuts: 3,
+} as const;
 /** すべてPhase 3Aの暫定係数。疲労・球場・守備・采配は未反映。 */
 export const probabilityConfig = {
   center: 50,
